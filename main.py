@@ -1,0 +1,283 @@
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfgen import canvas
+from flask import Flask, render_template, request, send_file
+import io
+
+LOGO_PATH = "logo.png"
+
+GOLD = (0.85, 0.7, 0.2)
+BLACK = (0, 0, 0)
+
+# =========================
+# PRODUITS COMPLETS
+# =========================
+PRODUCTS = {
+    # SALÉ
+    "Mini Burger": 2.50,
+    "Mini Hot Dog": 1.60,
+    "Burritos de kefta": 2.50,
+    "Club Suédois": 1.20,
+    "Navette": 1.40,
+    "Club au Thon": 1.00,
+    "Egg Muffin": 3.00,
+    "Mini Croque Monsieur": 0.80,
+    "Club Sandwich": 1.00,
+    "Mini Wrap": 1.20,
+    "Toast Avocado": 2.50,
+    "Mini Cake Salé": 1.80,
+    "Feuilleté Saucisse": 0.50,
+    "Larmajoun": 3.00,
+    "Mini Bruschetta": 1.00,
+    "Bruschetta": 2.50,
+    "Mini Foccacia": 1.50,
+    "Brochette Tomate Mozzarella": 1.50,
+    "Brochette Melon Serrano": 1.50,
+
+    # CROUSTILLANT
+    "Ketlata": 1.60,
+    "Nems": 1.20,
+    "Tempura Crevette": 1.60,
+    "Berégué": 1.20,
+    "Samoussa": 1.20,
+
+    # VERRINES / SALADES
+    "Verrine Poulet": 1.50,
+    "Verrine Légumes": 1.20,
+    "Verrine Marinés": 1.50,
+    "Verrine Saumon": 1.50,
+    "Mini Salade": 2.00,
+    "Burrata Pesto": 2.00,
+
+    # SUCRÉ
+    "Tiramisu": 1.20,
+    "Mousse Chocolat": 1.50,
+    "Mini Donuts": 1.00,
+    "Panacotta": 1.20,
+    "Brownie": 1.20,
+    "Muffin": 2.00,
+    "Macaron": 2.00,
+    "Mini Fruit Brochette": 1.50,
+    "Mini Tarte Tatin": 1.50,
+    "Mini Fondant Chocolat": 2.00
+}
+
+# =========================
+# HORS MIGNARDISES
+# =========================
+HORS = [
+    "Plateau Charcuterie",
+    "Plateau Fromage",
+    "Plateau Charcuterie/Fromage",
+    "Plateau Légumes à croquer",
+    "Plateau de Fruits",
+    "Grande salade composée",
+    "Mezze",
+    "Cocktail avec ou sans alcool",
+    "Bonbonnière",
+    "Percolateur"
+]
+
+# =========================
+# TOTAL
+# =========================
+def calc_total(products, hors, supp):
+    total = 0
+
+    for _, (q, p) in products.items():
+        if p != "OFFERT":
+            total += q * p
+
+    for v in hors.values():
+        if v[0] != "OFFERT":
+            total += v[2]
+
+    for v in supp.values():
+        if v != "OFFERT":
+            total += v
+
+    return total
+
+# =========================
+# PDF VERS BUFFER (pour Flask)
+# =========================
+def generate_pdf_buffer(nom, adresse, personnes, products, hors, supp, total, buffer):
+    c = canvas.Canvas(buffer, pagesize=A4)
+
+    COL_NOM   = 50
+    COL_QTE   = 310
+    COL_PU    = 370
+    COL_EURO  = 510
+    Y_MIN     = 60
+
+    def nouvelle_page():
+        c.showPage()
+        c.setFillColorRGB(*BLACK)
+        c.setFont("Helvetica", 9)
+        return 780
+
+    def check_y(y, espace=12):
+        if y < Y_MIN + espace:
+            return nouvelle_page()
+        return y
+
+    # ---- LOGO ----
+    try:
+        c.drawImage(LOGO_PATH, 230, 720, width=130, height=130,
+                    preserveAspectRatio=True, mask='auto')
+    except:
+        pass
+
+    # ---- TITRE ----
+    c.setFont("Helvetica-Bold", 20)
+    c.setFillColorRGB(*GOLD)
+    c.drawCentredString(300, 700, "DEVIS TRAITEUR")
+
+    # ---- INFOS CLIENT ----
+    c.setFillColorRGB(*BLACK)
+    c.setFont("Helvetica", 10)
+    c.drawString(50, 670, f"Client : {nom}")
+    c.drawString(50, 655, f"Adresse : {adresse}")
+    c.drawString(50, 640, f"Personnes : {personnes}")
+
+    y = 610
+
+    # ---- EN-TÊTES PRODUITS ----
+    c.setFont("Helvetica-Bold", 10)
+    c.drawString(COL_NOM,  y, "Produit")
+    c.drawString(COL_QTE,  y, "Qté")
+    c.drawRightString(COL_PU,   y, "PU (€)")
+    c.drawRightString(COL_EURO, y, "Total (€)")
+    y -= 15
+    c.line(50, y, 550, y)
+    y -= 15
+
+    # ---- PRODUITS ----
+    c.setFont("Helvetica", 9)
+    for p, (q, pr) in products.items():
+        y = check_y(y)
+        if pr == "OFFERT":
+            c.drawString(COL_NOM, y, p[:35])
+            c.drawRightString(COL_EURO, y, "OFFERT")
+        else:
+            c.drawString(COL_NOM, y, p[:35])
+            c.drawString(COL_QTE, y, str(q))
+            c.drawRightString(COL_PU,   y, f"{pr:.2f}")
+            c.drawRightString(COL_EURO, y, f"{q*pr:.2f}")
+        y -= 12
+
+    # ---- HORS MIGNARDISES ----
+    if hors:
+        y -= 10
+        y = check_y(y, 30)
+        c.setFont("Helvetica-Bold", 10)
+        c.drawString(COL_NOM, y, "Hors Mignardises")
+        c.drawString(COL_QTE, y, "Qté")
+        c.drawRightString(COL_PU,   y, "PU (€)")
+        c.drawRightString(COL_EURO, y, "Total (€)")
+        y -= 12
+        c.line(50, y, 550, y)
+        y -= 12
+
+        c.setFont("Helvetica", 9)
+        for k, v in hors.items():
+            y = check_y(y)
+            c.drawString(COL_NOM, y, k)
+            if v[0] == "OFFERT":
+                c.drawRightString(COL_EURO, y, "OFFERT")
+            else:
+                c.drawString(COL_QTE,       y, str(v[0]))
+                c.drawRightString(COL_PU,   y, f"{v[1]:.2f}")
+                c.drawRightString(COL_EURO, y, f"{v[2]:.2f}")
+            y -= 12
+
+    # ---- SUPPLÉMENTS ----
+    if supp:
+        y -= 10
+        y = check_y(y, 30)
+        c.setFont("Helvetica-Bold", 10)
+        c.drawString(COL_NOM, y, "Suppléments")
+        c.drawRightString(COL_EURO, y, "Prix (€)")
+        y -= 12
+        c.line(50, y, 550, y)
+        y -= 12
+
+        c.setFont("Helvetica", 9)
+        for k, v in supp.items():
+            y = check_y(y)
+            c.drawString(COL_NOM, y, k)
+            if v == "OFFERT":
+                c.drawRightString(COL_EURO, y, "OFFERT")
+            else:
+                c.drawRightString(COL_EURO, y, f"{v:.2f}")
+            y -= 12
+
+    # ---- TOTAL ----
+    y -= 15
+    y = check_y(y, 40)
+    c.line(50, y, 550, y)
+    y -= 20
+    c.setFont("Helvetica-Bold", 14)
+    c.setFillColorRGB(*GOLD)
+    c.drawString(COL_NOM, y, "TOTAL")
+    c.drawRightString(COL_EURO, y, f"{total:.2f} €")
+    c.setFillColorRGB(*BLACK)
+
+    c.save()
+
+# =========================
+# FLASK APP
+# =========================
+app = Flask(__name__)
+
+@app.route("/")
+def index():
+    return render_template("form.html", products=PRODUCTS, hors=HORS)
+
+@app.route("/generer", methods=["POST"])
+def generer():
+    nom = request.form.get("nom")
+    adresse = request.form.get("adresse")
+    personnes = int(request.form.get("personnes"))
+
+    products = {}
+    for name, price in PRODUCTS.items():
+        val = request.form.get(f"prod_{name}", "0").strip()
+        if val.lower() == "offert":
+            products[name] = (0, "OFFERT")
+        elif val != "0" and val != "":
+            products[name] = (int(val), price)
+
+    hors = {}
+    for item in HORS:
+        qte_val = request.form.get(f"hors_qte_{item}", "0").strip()
+        pu_val = request.form.get(f"hors_pu_{item}", "0").strip()
+        if pu_val.lower() == "offert":
+            hors[item] = ("OFFERT", 0, 0)
+        elif qte_val not in ("0", "") and pu_val not in ("0", ""):
+            qte = int(qte_val)
+            pu = float(pu_val)
+            hors[item] = (qte, pu, qte * pu)
+
+    supp = {}
+    for item in ["Livraison", "Installation", "Service"]:
+        val = request.form.get(f"supp_{item}", "0").strip()
+        if val.lower() == "offert":
+            supp[item] = "OFFERT"
+        elif val != "0" and val != "":
+            supp[item] = float(val)
+
+    total = calc_total(products, hors, supp)
+
+    buffer = io.BytesIO()
+    generate_pdf_buffer(nom, adresse, personnes, products, hors, supp, total, buffer)
+    buffer.seek(0)
+
+    return send_file(
+        buffer,
+        as_attachment=True,
+        download_name=f"devis_{nom}.pdf",
+        mimetype="application/pdf"
+    )
+
+if __name__ == "__main__":
+    app.run(debug=True)
