@@ -194,10 +194,10 @@ def generate_pdf_buffer(nom, adresse, personnes, products, hors, supp, total, bu
     for p, (q, pr) in products.items():
         y = check_y(y)
         if pr == "OFFERT":
-            c.drawString(COL_NOM, y, p[:35])
+            c.drawString(COL_NOM, y, p[:50])
             c.drawRightString(COL_EURO, y, "OFFERT")
         else:
-            c.drawString(COL_NOM, y, p[:35])
+            c.drawString(COL_NOM, y, p[:50])
             c.drawString(COL_QTE, y, str(q))
             c.drawRightString(COL_PU,   y, f"{pr:.2f}")
             c.drawRightString(COL_EURO, y, f"{q*pr:.2f}")
