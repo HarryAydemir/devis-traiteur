@@ -2,11 +2,33 @@ from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 from flask import Flask, render_template, request, send_file
 import io
+import json
+import os
+from datetime import datetime
 
 LOGO_PATH = "logo.png"
+COUNTER_FILE = "counters.json"
 
 GOLD = (0.85, 0.7, 0.2)
 BLACK = (0, 0, 0)
+GRAY = (0.5, 0.5, 0.5)
+RED  = (0.75, 0.15, 0.15)
+
+# =========================
+# NUMÉROTATION
+# =========================
+def get_next_numero():
+    annee = datetime.now().year
+    if os.path.exists(COUNTER_FILE):
+        with open(COUNTER_FILE, "r") as f:
+            counters = json.load(f)
+    else:
+        counters = {}
+    key = f"devis_{annee}"
+    counters[key] = counters.get(key, 0) + 1
+    with open(COUNTER_FILE, "w") as f:
+        json.dump(counters, f)
+    return f"D-{annee}-{counters[key]:03d}"
 
 # =========================
 # PRODUITS COMPLETS
@@ -84,7 +106,7 @@ PRODUCTS = {
     "Panacotta": 1.20,
     "Mousse de Mascarpone Pistache/Fraise": 1.20,
     "Mousse de Mascarpone Speculos/Pêche": 1.20,
-    "Verrine façon Tarte au Citron": 1.50, 
+    "Verrine façon Tarte au Citron": 1.50,
     "Brownie Crème Anglaise": 1.20,
     "Pancake/Gaufre": 1.00,
     "Salade de fruits": 1.20,
@@ -120,32 +142,28 @@ HORS = [
 # =========================
 def calc_total(products, hors, supp):
     total = 0
-
     for _, (q, p) in products.items():
         if p != "OFFERT":
             total += q * p
-
     for v in hors.values():
         if v[0] != "OFFERT":
             total += v[2]
-
     for v in supp.values():
         if v != "OFFERT":
             total += v
-
     return total
 
 # =========================
-# PDF VERS BUFFER (pour Flask)
+# PDF
 # =========================
-def generate_pdf_buffer(nom, adresse, personnes, products, hors, supp, total, buffer):
+def generate_pdf_buffer(nom, adresse, personnes, products, hors, supp, total, buffer, numero, remise):
     c = canvas.Canvas(buffer, pagesize=A4)
 
-    COL_NOM   = 50
-    COL_QTE   = 310
-    COL_PU    = 370
-    COL_EURO  = 510
-    Y_MIN     = 60
+    COL_NOM  = 50
+    COL_QTE  = 310
+    COL_PU   = 370
+    COL_EURO = 510
+    Y_MIN    = 60
 
     def nouvelle_page():
         c.showPage()
@@ -170,6 +188,12 @@ def generate_pdf_buffer(nom, adresse, personnes, products, hors, supp, total, bu
     c.setFillColorRGB(*GOLD)
     c.drawCentredString(300, 700, "DEVIS TRAITEUR")
 
+    # ---- NUMÉRO + DATE ----
+    c.setFont("Helvetica", 9)
+    c.setFillColorRGB(*GRAY)
+    date_str = datetime.now().strftime("%d/%m/%Y")
+    c.drawCentredString(300, 686, f"N° {numero}  —  {date_str}")
+
     # ---- INFOS CLIENT ----
     c.setFillColorRGB(*BLACK)
     c.setFont("Helvetica", 10)
@@ -179,7 +203,7 @@ def generate_pdf_buffer(nom, adresse, personnes, products, hors, supp, total, bu
 
     y = 610
 
-    # ---- EN-TÊTES PRODUITS ----
+    # ---- EN-TÊTES ----
     c.setFont("Helvetica-Bold", 10)
     c.drawString(COL_NOM,  y, "Produit")
     c.drawString(COL_QTE,  y, "Qté")
@@ -249,15 +273,41 @@ def generate_pdf_buffer(nom, adresse, personnes, products, hors, supp, total, bu
                 c.drawRightString(COL_EURO, y, f"{v:.2f}")
             y -= 12
 
-    # ---- TOTAL ----
+    # ---- TOTAUX ----
     y -= 15
-    y = check_y(y, 40)
+    y = check_y(y, 80)
     c.line(50, y, 550, y)
-    y -= 20
+    y -= 18
+
+    if remise and remise > 0:
+        # Total avant remise
+        c.setFont("Helvetica", 10)
+        c.setFillColorRGB(*BLACK)
+        c.drawString(COL_NOM, y, "Total avant remise")
+        c.drawRightString(COL_EURO, y, f"{total:.2f} €")
+        y -= 15
+
+        # Remise
+        montant_remise = total * remise / 100
+        c.setFillColorRGB(*RED)
+        c.drawString(COL_NOM, y, f"Remise ({remise:.0f}%)")
+        c.drawRightString(COL_EURO, y, f"- {montant_remise:.2f} €")
+        y -= 15
+        c.setFillColorRGB(*BLACK)
+
+        total_final = total - montant_remise
+    else:
+        total_final = total
+
+    # Ligne de séparation avant total final
+    c.line(350, y - 4, 550, y - 4)
+    y -= 18
+
+    # TOTAL FINAL
     c.setFont("Helvetica-Bold", 14)
     c.setFillColorRGB(*GOLD)
     c.drawString(COL_NOM, y, "TOTAL")
-    c.drawRightString(COL_EURO, y, f"{total:.2f} €")
+    c.drawRightString(COL_EURO, y, f"{total_final:.2f} €")
     c.setFillColorRGB(*BLACK)
 
     c.save()
@@ -273,9 +323,14 @@ def index():
 
 @app.route("/generer", methods=["POST"])
 def generer():
-    nom = request.form.get("nom")
-    adresse = request.form.get("adresse")
+    nom      = request.form.get("nom")
+    adresse  = request.form.get("adresse")
     personnes = int(request.form.get("personnes"))
+
+    remise_val = request.form.get("remise_pct", "0").strip()
+    remise = float(remise_val) if remise_val and remise_val != "0" else 0
+
+    numero = get_next_numero()
 
     products = {}
     for name, price in PRODUCTS.items():
@@ -288,12 +343,12 @@ def generer():
     hors = {}
     for item in HORS:
         qte_val = request.form.get(f"hors_qte_{item}", "0").strip()
-        pu_val = request.form.get(f"hors_pu_{item}", "0").strip()
+        pu_val  = request.form.get(f"hors_pu_{item}", "0").strip()
         if pu_val.lower() == "offert":
             hors[item] = ("OFFERT", 0, 0)
         elif qte_val not in ("0", "") and pu_val not in ("0", ""):
             qte = int(qte_val)
-            pu = float(pu_val)
+            pu  = float(pu_val)
             hors[item] = (qte, pu, qte * pu)
 
     supp = {}
@@ -307,13 +362,13 @@ def generer():
     total = calc_total(products, hors, supp)
 
     buffer = io.BytesIO()
-    generate_pdf_buffer(nom, adresse, personnes, products, hors, supp, total, buffer)
+    generate_pdf_buffer(nom, adresse, personnes, products, hors, supp, total, buffer, numero, remise)
     buffer.seek(0)
 
     return send_file(
         buffer,
         as_attachment=True,
-        download_name=f"devis_{nom}.pdf",
+        download_name=f"devis_{numero}_{nom}.pdf",
         mimetype="application/pdf"
     )
 

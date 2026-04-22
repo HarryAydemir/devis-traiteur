@@ -47,6 +47,16 @@
       color: #f0f0f0; font-size: 0.95em; margin-bottom: 0;
     }
     .supp-hint { font-size: 0.75em; color: #888; margin-top: 4px; }
+
+    /* Remise */
+    .remise-field { display: none; margin-top: 12px; }
+    .remise-field.visible { display: block; }
+    .remise-field input {
+      width: 140px; padding: 10px; border-radius: 6px;
+      border: 1px solid #444; background: #1a1a1a;
+      color: #f0f0f0; font-size: 0.95em; margin-bottom: 0;
+    }
+    .remise-hint { font-size: 0.75em; color: #888; margin-top: 6px; }
   </style>
 </head>
 <body>
@@ -78,7 +88,7 @@
     {% endfor %}
   </div>
 
- <!-- HORS MIGNARDISES -->
+  <!-- HORS MIGNARDISES -->
   <div class="section">
     <h2>Hors Mignardises</h2>
     <p style="font-size:0.8em; color:#aaa; margin-bottom:14px;">Entrez une quantité et un prix unitaire, ou écrivez "offert" dans le prix</p>
@@ -100,7 +110,6 @@
   <div class="section">
     <h2>Suppléments</h2>
     <p style="font-size:0.8em; color:#aaa; margin-bottom:16px;">Sélectionnez Oui pour activer un supplément et indiquer son prix</p>
-
     {% for item in ["Livraison", "Installation", "Service"] %}
     <div class="supp-row">
       <div class="supp-label">{{ item }}</div>
@@ -114,7 +123,21 @@
       </div>
     </div>
     {% endfor %}
+  </div>
 
+  <!-- REMISE -->
+  <div class="section">
+    <h2>Remise</h2>
+    <p style="font-size:0.8em; color:#aaa; margin-bottom:16px;">Appliquer une remise sur le total ?</p>
+    <div class="supp-toggle">
+      <button type="button" onclick="toggleRemise('oui', this)">Oui</button>
+      <button type="button" onclick="toggleRemise('non', this)" class="active-non">Non</button>
+    </div>
+    <div class="remise-field" id="remise-field">
+      <label style="margin-bottom:6px;">Taux de remise (%)</label>
+      <input type="number" name="remise_pct" id="remise_pct" value="0" min="0" max="100" step="0.5" placeholder="Ex: 10">
+      <div class="remise-hint">Le devis affichera : total avant remise, taux de remise et total après remise</div>
+    </div>
   </div>
 
   <button type="submit">📄 Générer le devis PDF</button>
@@ -127,19 +150,29 @@
     const buttons = row.querySelectorAll('.supp-toggle button');
     const prixDiv = document.getElementById('prix_' + item);
     const input = prixDiv.querySelector('input');
-
     buttons.forEach(b => { b.classList.remove('active-oui', 'active-non'); });
-
     if (choix === 'oui') {
       btn.classList.add('active-oui');
-      buttons[1].classList.remove('active-non');
       prixDiv.classList.add('visible');
       input.value = '';
     } else {
       btn.classList.add('active-non');
-      buttons[0].classList.remove('active-oui');
       prixDiv.classList.remove('visible');
       input.value = '0';
+    }
+  }
+
+  function toggleRemise(choix, btn) {
+    const buttons = btn.closest('.section').querySelectorAll('.supp-toggle button');
+    buttons.forEach(b => { b.classList.remove('active-oui', 'active-non'); });
+    const field = document.getElementById('remise-field');
+    if (choix === 'oui') {
+      btn.classList.add('active-oui');
+      field.classList.add('visible');
+    } else {
+      btn.classList.add('active-non');
+      field.classList.remove('visible');
+      document.getElementById('remise_pct').value = '0';
     }
   }
 </script>
