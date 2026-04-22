@@ -28,35 +28,41 @@
     }
     button[type="submit"]:hover { background: #c49b2a; }
 
-    /* Suppléments */
-    .supp-row { margin-bottom: 16px; }
-    .supp-label { font-size: 0.9em; color: #eee; margin-bottom: 8px; }
-    .supp-toggle { display: flex; gap: 10px; margin-bottom: 8px; }
-    .supp-toggle button {
+    .toggle-btn-group { display: flex; gap: 10px; margin-bottom: 8px; }
+    .toggle-btn-group button {
       flex: 1; padding: 8px; border-radius: 6px; border: 1px solid #444;
       background: #1a1a1a; color: #ccc; font-size: 0.85em; cursor: pointer;
       transition: all 0.2s;
     }
-    .supp-toggle button.active-oui { background: #d4af37; color: #1a1a1a; border-color: #d4af37; font-weight: bold; }
-    .supp-toggle button.active-non { background: #555; color: #fff; border-color: #555; font-weight: bold; }
-    .supp-prix { display: none; }
-    .supp-prix.visible { display: block; }
-    .supp-prix input {
+    .toggle-btn-group button.active-oui { background: #d4af37; color: #1a1a1a; border-color: #d4af37; font-weight: bold; }
+    .toggle-btn-group button.active-non { background: #555; color: #fff; border-color: #555; font-weight: bold; }
+
+    .hidden-field { display: none; }
+    .hidden-field.visible { display: block; }
+    .hidden-field input {
       width: 100%; padding: 10px; border-radius: 6px;
       border: 1px solid #444; background: #1a1a1a;
       color: #f0f0f0; font-size: 0.95em; margin-bottom: 0;
     }
-    .supp-hint { font-size: 0.75em; color: #888; margin-top: 4px; }
+    .field-hint { font-size: 0.75em; color: #888; margin-top: 4px; }
 
     /* Remise */
-    .remise-field { display: none; margin-top: 12px; }
-    .remise-field.visible { display: block; }
-    .remise-field input {
-      width: 140px; padding: 10px; border-radius: 6px;
-      border: 1px solid #444; background: #1a1a1a;
-      color: #f0f0f0; font-size: 0.95em; margin-bottom: 0;
+    .remise-options { display: none; margin-top: 14px; }
+    .remise-options.visible { display: block; }
+    .remise-type-group { display: flex; gap: 10px; margin-bottom: 14px; }
+    .remise-type-group button {
+      flex: 1; padding: 8px; border-radius: 6px; border: 1px solid #444;
+      background: #1a1a1a; color: #ccc; font-size: 0.85em; cursor: pointer;
+      transition: all 0.2s;
     }
-    .remise-hint { font-size: 0.75em; color: #888; margin-top: 6px; }
+    .remise-type-group button.active-oui { background: #d4af37; color: #1a1a1a; border-color: #d4af37; font-weight: bold; }
+    .remise-input { display: none; }
+    .remise-input.visible { display: block; }
+    .remise-input input {
+      width: 160px; padding: 10px; border-radius: 6px;
+      border: 1px solid #444; background: #1a1a1a;
+      color: #f0f0f0; font-size: 0.95em;
+    }
   </style>
 </head>
 <body>
@@ -111,15 +117,15 @@
     <h2>Suppléments</h2>
     <p style="font-size:0.8em; color:#aaa; margin-bottom:16px;">Sélectionnez Oui pour activer un supplément et indiquer son prix</p>
     {% for item in ["Livraison", "Installation", "Service"] %}
-    <div class="supp-row">
-      <div class="supp-label">{{ item }}</div>
-      <div class="supp-toggle">
+    <div style="margin-bottom:16px;">
+      <div style="font-size:0.9em; color:#eee; margin-bottom:8px;">{{ item }}</div>
+      <div class="toggle-btn-group">
         <button type="button" onclick="toggleSupp('{{ item }}', 'oui', this)">Oui</button>
         <button type="button" onclick="toggleSupp('{{ item }}', 'non', this)" class="active-non">Non</button>
       </div>
-      <div class="supp-prix" id="prix_{{ item }}">
+      <div class="hidden-field" id="prix_{{ item }}">
         <input type="text" name="supp_{{ item }}" value="0" placeholder="Ex: 50 ou offert">
-        <div class="supp-hint">Entrez un montant en € ou écrivez "offert"</div>
+        <div class="field-hint">Entrez un montant en € ou écrivez "offert"</div>
       </div>
     </div>
     {% endfor %}
@@ -128,15 +134,34 @@
   <!-- REMISE -->
   <div class="section">
     <h2>Remise</h2>
-    <p style="font-size:0.8em; color:#aaa; margin-bottom:16px;">Appliquer une remise sur le total ?</p>
-    <div class="supp-toggle">
+    <p style="font-size:0.8em; color:#aaa; margin-bottom:12px;">Appliquer une remise sur le total ?</p>
+    <div class="toggle-btn-group">
       <button type="button" onclick="toggleRemise('oui', this)">Oui</button>
       <button type="button" onclick="toggleRemise('non', this)" class="active-non">Non</button>
     </div>
-    <div class="remise-field" id="remise-field">
-      <label style="margin-bottom:6px;">Taux de remise (%)</label>
-      <input type="number" name="remise_pct" id="remise_pct" value="0" min="0" max="100" step="0.5" placeholder="Ex: 10">
-      <div class="remise-hint">Le devis affichera : total avant remise, taux de remise et total après remise</div>
+
+    <div class="remise-options" id="remise-options">
+      <p style="font-size:0.8em; color:#aaa; margin-bottom:10px;">Choisissez le type de remise :</p>
+      <div class="remise-type-group">
+        <button type="button" id="btn-remise-pct" onclick="setRemiseType('pct', this)">En pourcentage (%)</button>
+        <button type="button" id="btn-remise-eur" onclick="setRemiseType('eur', this)">En montant (€)</button>
+      </div>
+
+      <!-- Remise en % -->
+      <div class="remise-input" id="remise-pct-field">
+        <label>Taux de remise (%)</label>
+        <input type="number" name="remise_pct" id="remise_pct" value="0" min="0" max="100" step="0.5" placeholder="Ex: 10">
+        <input type="hidden" name="remise_euros" value="0">
+        <div class="field-hint">Ex : 10 pour une remise de 10% sur le total</div>
+      </div>
+
+      <!-- Remise en € -->
+      <div class="remise-input" id="remise-eur-field">
+        <label>Montant de la remise (€)</label>
+        <input type="number" name="remise_euros" id="remise_euros" value="0" min="0" step="0.5" placeholder="Ex: 100">
+        <input type="hidden" name="remise_pct" value="0">
+        <div class="field-hint">Ex : 100 pour une remise de 100 € sur le total</div>
+      </div>
     </div>
   </div>
 
@@ -146,32 +171,50 @@
 
 <script>
   function toggleSupp(item, choix, btn) {
-    const row = btn.closest('.supp-row');
-    const buttons = row.querySelectorAll('.supp-toggle button');
-    const prixDiv = document.getElementById('prix_' + item);
-    const input = prixDiv.querySelector('input');
+    const row = btn.closest('div[style]') || btn.parentElement.parentElement;
+    const buttons = btn.closest('.toggle-btn-group').querySelectorAll('button');
+    const field = document.getElementById('prix_' + item);
+    const input = field.querySelector('input');
     buttons.forEach(b => { b.classList.remove('active-oui', 'active-non'); });
     if (choix === 'oui') {
       btn.classList.add('active-oui');
-      prixDiv.classList.add('visible');
+      field.classList.add('visible');
       input.value = '';
     } else {
       btn.classList.add('active-non');
-      prixDiv.classList.remove('visible');
+      field.classList.remove('visible');
       input.value = '0';
     }
   }
 
   function toggleRemise(choix, btn) {
-    const buttons = btn.closest('.section').querySelectorAll('.supp-toggle button');
+    const buttons = btn.closest('.toggle-btn-group').querySelectorAll('button');
     buttons.forEach(b => { b.classList.remove('active-oui', 'active-non'); });
-    const field = document.getElementById('remise-field');
+    btn.classList.add(choix === 'oui' ? 'active-oui' : 'active-non');
+    const options = document.getElementById('remise-options');
     if (choix === 'oui') {
-      btn.classList.add('active-oui');
-      field.classList.add('visible');
+      options.classList.add('visible');
     } else {
-      btn.classList.add('active-non');
-      field.classList.remove('visible');
+      options.classList.remove('visible');
+      document.getElementById('remise_pct').value = '0';
+      document.getElementById('remise_euros').value = '0';
+      document.querySelectorAll('.remise-input').forEach(f => f.classList.remove('visible'));
+      document.querySelectorAll('.remise-type-group button').forEach(b => b.classList.remove('active-oui'));
+    }
+  }
+
+  function setRemiseType(type, btn) {
+    const buttons = btn.closest('.remise-type-group').querySelectorAll('button');
+    buttons.forEach(b => { b.classList.remove('active-oui'); });
+    btn.classList.add('active-oui');
+
+    document.querySelectorAll('.remise-input').forEach(f => f.classList.remove('visible'));
+
+    if (type === 'pct') {
+      document.getElementById('remise-pct-field').classList.add('visible');
+      document.getElementById('remise_euros').value = '0';
+    } else {
+      document.getElementById('remise-eur-field').classList.add('visible');
       document.getElementById('remise_pct').value = '0';
     }
   }

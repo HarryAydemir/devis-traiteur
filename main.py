@@ -156,7 +156,8 @@ def calc_total(products, hors, supp):
 # =========================
 # PDF
 # =========================
-def generate_pdf_buffer(nom, adresse, personnes, products, hors, supp, total, buffer, numero, remise):
+def generate_pdf_buffer(nom, adresse, personnes, products, hors, supp, total, buffer,
+                        numero, remise_pct, remise_euros):
     c = canvas.Canvas(buffer, pagesize=A4)
 
     COL_NOM  = 50
@@ -275,11 +276,14 @@ def generate_pdf_buffer(nom, adresse, personnes, products, hors, supp, total, bu
 
     # ---- TOTAUX ----
     y -= 15
-    y = check_y(y, 80)
+    y = check_y(y, 90)
     c.line(50, y, 550, y)
     y -= 18
 
-    if remise and remise > 0:
+    # Calcul remise
+    has_remise = (remise_pct and remise_pct > 0) or (remise_euros and remise_euros > 0)
+
+    if has_remise:
         # Total avant remise
         c.setFont("Helvetica", 10)
         c.setFillColorRGB(*BLACK)
@@ -287,10 +291,17 @@ def generate_pdf_buffer(nom, adresse, personnes, products, hors, supp, total, bu
         c.drawRightString(COL_EURO, y, f"{total:.2f} €")
         y -= 15
 
-        # Remise
-        montant_remise = total * remise / 100
+        # Calcul du montant de remise
+        if remise_pct and remise_pct > 0:
+            montant_remise = total * remise_pct / 100
+            libelle_remise = f"Remise ({remise_pct:.0f}%)"
+        else:
+            montant_remise = remise_euros
+            libelle_remise = "Remise"
+
+        # Affichage remise en rouge
         c.setFillColorRGB(*RED)
-        c.drawString(COL_NOM, y, f"Remise ({remise:.0f}%)")
+        c.drawString(COL_NOM, y, libelle_remise)
         c.drawRightString(COL_EURO, y, f"- {montant_remise:.2f} €")
         y -= 15
         c.setFillColorRGB(*BLACK)
@@ -299,7 +310,7 @@ def generate_pdf_buffer(nom, adresse, personnes, products, hors, supp, total, bu
     else:
         total_final = total
 
-    # Ligne de séparation avant total final
+    # Ligne avant total final
     c.line(350, y - 4, 550, y - 4)
     y -= 18
 
@@ -323,12 +334,14 @@ def index():
 
 @app.route("/generer", methods=["POST"])
 def generer():
-    nom      = request.form.get("nom")
-    adresse  = request.form.get("adresse")
+    nom       = request.form.get("nom")
+    adresse   = request.form.get("adresse")
     personnes = int(request.form.get("personnes"))
 
-    remise_val = request.form.get("remise_pct", "0").strip()
-    remise = float(remise_val) if remise_val and remise_val != "0" else 0
+    remise_pct_val   = request.form.get("remise_pct", "0").strip()
+    remise_euros_val = request.form.get("remise_euros", "0").strip()
+    remise_pct   = float(remise_pct_val)   if remise_pct_val   and remise_pct_val   != "0" else 0
+    remise_euros = float(remise_euros_val) if remise_euros_val and remise_euros_val != "0" else 0
 
     numero = get_next_numero()
 
@@ -362,7 +375,8 @@ def generer():
     total = calc_total(products, hors, supp)
 
     buffer = io.BytesIO()
-    generate_pdf_buffer(nom, adresse, personnes, products, hors, supp, total, buffer, numero, remise)
+    generate_pdf_buffer(nom, adresse, personnes, products, hors, supp, total, buffer,
+                        numero, remise_pct, remise_euros)
     buffer.seek(0)
 
     return send_file(
