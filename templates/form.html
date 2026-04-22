@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Devis / Facture - Salade and Cake</title>
+  <title>Devis Traiteur - Salade and Cake</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { background: #1a1a1a; color: #f0f0f0; font-family: 'Georgia', serif; padding: 20px; }
@@ -20,37 +20,6 @@
     .product-row span { flex: 1; font-size: 0.85em; color: #eee; }
     .product-row small { color: #d4af37; font-size: 0.75em; white-space: nowrap; }
     .product-row input { width: 90px; margin-bottom: 0; }
-
-    /* Toggle générique */
-    .toggle-row { margin-bottom: 16px; }
-    .toggle-label { font-size: 0.9em; color: #eee; margin-bottom: 8px; }
-    .toggle-group { display: flex; gap: 10px; margin-bottom: 8px; }
-    .toggle-group button {
-      flex: 1; padding: 8px; border-radius: 6px; border: 1px solid #444;
-      background: #1a1a1a; color: #ccc; font-size: 0.85em; cursor: pointer;
-      transition: all 0.2s;
-    }
-    .toggle-group button.active-gold { background: #d4af37; color: #1a1a1a; border-color: #d4af37; font-weight: bold; }
-    .toggle-group button.active-dark { background: #555; color: #fff; border-color: #555; font-weight: bold; }
-    .hidden-field { display: none; }
-    .hidden-field.visible { display: block; }
-    .hidden-field input {
-      width: 100%; padding: 10px; border-radius: 6px;
-      border: 1px solid #444; background: #1a1a1a;
-      color: #f0f0f0; font-size: 0.95em; margin-bottom: 0;
-    }
-    .field-hint { font-size: 0.75em; color: #888; margin-top: 4px; }
-
-    /* Type doc */
-    .type-doc-group { display: flex; gap: 12px; margin-bottom: 16px; }
-    .type-doc-group button {
-      flex: 1; padding: 12px; border-radius: 8px; border: 2px solid #444;
-      background: #1a1a1a; color: #ccc; font-size: 1em; cursor: pointer;
-      transition: all 0.2s; font-family: 'Georgia', serif;
-    }
-    .type-doc-group button.active-gold { background: #d4af37; color: #1a1a1a; border-color: #d4af37; font-weight: bold; }
-
-    /* Bouton submit */
     button[type="submit"] {
       width: 100%; padding: 16px; background: #d4af37;
       color: #1a1a1a; font-size: 1.1em; font-weight: bold;
@@ -59,38 +28,32 @@
     }
     button[type="submit"]:hover { background: #c49b2a; }
 
-    .col-headers { display: flex; gap: 10px; margin-bottom: 8px; }
-    .col-headers span { font-size: 0.75em; color: #888; text-align: center; }
+    /* Suppléments */
+    .supp-row { margin-bottom: 16px; }
+    .supp-label { font-size: 0.9em; color: #eee; margin-bottom: 8px; }
+    .supp-toggle { display: flex; gap: 10px; margin-bottom: 8px; }
+    .supp-toggle button {
+      flex: 1; padding: 8px; border-radius: 6px; border: 1px solid #444;
+      background: #1a1a1a; color: #ccc; font-size: 0.85em; cursor: pointer;
+      transition: all 0.2s;
+    }
+    .supp-toggle button.active-oui { background: #d4af37; color: #1a1a1a; border-color: #d4af37; font-weight: bold; }
+    .supp-toggle button.active-non { background: #555; color: #fff; border-color: #555; font-weight: bold; }
+    .supp-prix { display: none; }
+    .supp-prix.visible { display: block; }
+    .supp-prix input {
+      width: 100%; padding: 10px; border-radius: 6px;
+      border: 1px solid #444; background: #1a1a1a;
+      color: #f0f0f0; font-size: 0.95em; margin-bottom: 0;
+    }
+    .supp-hint { font-size: 0.75em; color: #888; margin-top: 4px; }
   </style>
 </head>
 <body>
 
-<h1>🍽 Salade and Cake</h1>
+<h1>🍽 Devis Traiteur</h1>
 
 <form action="/generer" method="POST">
-
-  <!-- TYPE DE DOCUMENT -->
-  <div class="section">
-    <h2>Type de document</h2>
-    <div class="type-doc-group">
-      <button type="button" id="btn-devis" class="active-gold" onclick="setTypeDoc('devis')">📋 Devis</button>
-      <button type="button" id="btn-facture" onclick="setTypeDoc('facture')">🧾 Facture</button>
-    </div>
-    <input type="hidden" name="type_doc" id="type_doc" value="devis">
-
-    <!-- Afficher coordonnées société (optionnel pour devis, obligatoire pour facture) -->
-    <div id="societe-toggle-wrapper">
-      <div class="toggle-label">Afficher les coordonnées de la société sur le document ?</div>
-      <div class="toggle-group">
-        <button type="button" onclick="toggleField('societe', 'oui', this)">Oui</button>
-        <button type="button" onclick="toggleField('societe', 'non', this)" class="active-dark">Non</button>
-      </div>
-      <input type="hidden" name="afficher_societe" id="afficher_societe" value="non">
-    </div>
-    <div id="societe-facture-info" style="display:none; font-size:0.8em; color:#d4af37; margin-top:4px;">
-      ℹ️ Les coordonnées sont automatiquement affichées sur les factures.
-    </div>
-  </div>
 
   <!-- INFOS CLIENT -->
   <div class="section">
@@ -115,14 +78,14 @@
     {% endfor %}
   </div>
 
-  <!-- HORS MIGNARDISES -->
+ <!-- HORS MIGNARDISES -->
   <div class="section">
     <h2>Hors Mignardises</h2>
     <p style="font-size:0.8em; color:#aaa; margin-bottom:14px;">Entrez une quantité et un prix unitaire, ou écrivez "offert" dans le prix</p>
-    <div class="col-headers">
-      <span style="flex:1;">Article</span>
-      <span style="width:70px;">Qté</span>
-      <span style="width:90px;">Prix unit.</span>
+    <div style="display:flex; gap:10px; margin-bottom:8px;">
+      <span style="flex:1; font-size:0.75em; color:#888;">Article</span>
+      <span style="width:70px; font-size:0.75em; color:#888; text-align:center;">Qté</span>
+      <span style="width:90px; font-size:0.75em; color:#888; text-align:center;">Prix unit.</span>
     </div>
     {% for item in hors %}
     <div class="product-row">
@@ -133,150 +96,51 @@
     {% endfor %}
   </div>
 
-  <!-- ANIMATIONS -->
-  <div class="section">
-    <h2>Animations</h2>
-    <p style="font-size:0.8em; color:#aaa; margin-bottom:14px;">Entrez une quantité et un prix unitaire, ou écrivez "offert" dans le prix</p>
-    <div class="col-headers">
-      <span style="flex:1;">Animation</span>
-      <span style="width:70px;">Qté</span>
-      <span style="width:90px;">Prix unit.</span>
-    </div>
-    {% for item in animations %}
-    <div class="product-row">
-      <span>{{ item }}</span>
-      <input type="text" name="anim_qte_{{ item }}" value="0" style="width:70px;">
-      <input type="text" name="anim_pu_{{ item }}" value="0" style="width:90px;" placeholder="€ ou offert">
-    </div>
-    {% endfor %}
-  </div>
-
   <!-- SUPPLÉMENTS -->
   <div class="section">
     <h2>Suppléments</h2>
-    <p style="font-size:0.8em; color:#aaa; margin-bottom:16px;">Sélectionnez Oui pour activer un supplément</p>
+    <p style="font-size:0.8em; color:#aaa; margin-bottom:16px;">Sélectionnez Oui pour activer un supplément et indiquer son prix</p>
+
     {% for item in ["Livraison", "Installation", "Service"] %}
-    <div class="toggle-row">
-      <div class="toggle-label">{{ item }}</div>
-      <div class="toggle-group">
+    <div class="supp-row">
+      <div class="supp-label">{{ item }}</div>
+      <div class="supp-toggle">
         <button type="button" onclick="toggleSupp('{{ item }}', 'oui', this)">Oui</button>
-        <button type="button" onclick="toggleSupp('{{ item }}', 'non', this)" class="active-dark">Non</button>
+        <button type="button" onclick="toggleSupp('{{ item }}', 'non', this)" class="active-non">Non</button>
       </div>
-      <div class="hidden-field" id="prix_{{ item }}">
+      <div class="supp-prix" id="prix_{{ item }}">
         <input type="text" name="supp_{{ item }}" value="0" placeholder="Ex: 50 ou offert">
-        <div class="field-hint">Entrez un montant en € ou écrivez "offert"</div>
+        <div class="supp-hint">Entrez un montant en € ou écrivez "offert"</div>
       </div>
     </div>
     {% endfor %}
+
   </div>
 
-  <!-- TVA -->
-  <div class="section">
-    <h2>TVA</h2>
-    <label>Taux de TVA (%)</label>
-    <input type="number" name="tva_pct" value="20" min="0" max="100" step="0.1" style="width:120px;">
-  </div>
-
-  <!-- REMISE -->
-  <div class="section">
-    <h2>Remise</h2>
-    <div class="toggle-row">
-      <div class="toggle-label">Appliquer une remise ?</div>
-      <div class="toggle-group">
-        <button type="button" onclick="toggleRemise('oui', this)">Oui</button>
-        <button type="button" onclick="toggleRemise('non', this)" class="active-dark">Non</button>
-      </div>
-      <div class="hidden-field" id="remise-field">
-        <input type="number" name="remise_pct" id="remise_pct" value="0" min="0" max="100" step="0.1" placeholder="Ex: 10 pour 10%">
-        <div class="field-hint">Le total avant remise, le taux et le total après remise apparaîtront sur le document</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- CONDITIONS DE PAIEMENT -->
-  <div class="section">
-    <h2>Conditions de paiement</h2>
-    <div class="toggle-group" style="flex-wrap:wrap; gap:8px;">
-      <button type="button" id="pay-aucun" class="active-dark" onclick="setPaiement('aucun', this)" style="flex:none; padding:8px 16px;">Aucune</button>
-      <button type="button" id="pay-reception" onclick="setPaiement('reception', this)" style="flex:none; padding:8px 16px;">À la réception</button>
-      <button type="button" id="pay-acompte" onclick="setPaiement('acompte', this)" style="flex:none; padding:8px 16px;">Acompte</button>
-    </div>
-    <input type="hidden" name="paiement" id="paiement" value="aucun">
-    <div class="hidden-field" id="acompte-field" style="margin-top:12px;">
-      <label>Pourcentage d'acompte (%)</label>
-      <input type="number" name="acompte_pct" value="30" min="1" max="100" step="1" style="width:120px;">
-      <div class="field-hint">Le montant de l'acompte sera calculé automatiquement sur le TTC</div>
-    </div>
-  </div>
-
-  <button type="submit" id="submit-btn">📄 Générer le Devis PDF</button>
+  <button type="submit">📄 Générer le devis PDF</button>
 
 </form>
 
 <script>
-  function setTypeDoc(type) {
-    document.getElementById('type_doc').value = type;
-    document.getElementById('btn-devis').className = type === 'devis' ? 'active-gold' : '';
-    document.getElementById('btn-facture').className = type === 'facture' ? 'active-gold' : '';
-    document.getElementById('submit-btn').textContent = type === 'facture' ? '🧾 Générer la Facture PDF' : '📄 Générer le Devis PDF';
-
-    if (type === 'facture') {
-      document.getElementById('societe-toggle-wrapper').style.display = 'none';
-      document.getElementById('societe-facture-info').style.display = 'block';
-      document.getElementById('afficher_societe').value = 'oui';
-    } else {
-      document.getElementById('societe-toggle-wrapper').style.display = 'block';
-      document.getElementById('societe-facture-info').style.display = 'none';
-    }
-  }
-
-  function toggleField(id, choix, btn) {
-    const wrapper = btn.closest('.toggle-row') || btn.closest('.section');
-    const buttons = btn.closest('.toggle-group').querySelectorAll('button');
-    buttons.forEach(b => { b.classList.remove('active-gold', 'active-dark'); });
-    btn.classList.add(choix === 'oui' ? 'active-gold' : 'active-dark');
-    if (id === 'societe') {
-      document.getElementById('afficher_societe').value = choix;
-    }
-  }
-
   function toggleSupp(item, choix, btn) {
-    const row = btn.closest('.toggle-row');
-    const buttons = row.querySelectorAll('.toggle-group button');
-    const field = document.getElementById('prix_' + item);
-    const input = field.querySelector('input');
-    buttons.forEach(b => { b.classList.remove('active-gold', 'active-dark'); });
+    const row = btn.closest('.supp-row');
+    const buttons = row.querySelectorAll('.supp-toggle button');
+    const prixDiv = document.getElementById('prix_' + item);
+    const input = prixDiv.querySelector('input');
+
+    buttons.forEach(b => { b.classList.remove('active-oui', 'active-non'); });
+
     if (choix === 'oui') {
-      btn.classList.add('active-gold');
-      field.classList.add('visible');
+      btn.classList.add('active-oui');
+      buttons[1].classList.remove('active-non');
+      prixDiv.classList.add('visible');
       input.value = '';
     } else {
-      btn.classList.add('active-dark');
-      field.classList.remove('visible');
+      btn.classList.add('active-non');
+      buttons[0].classList.remove('active-oui');
+      prixDiv.classList.remove('visible');
       input.value = '0';
     }
-  }
-
-  function toggleRemise(choix, btn) {
-    const buttons = btn.closest('.toggle-group').querySelectorAll('button');
-    buttons.forEach(b => { b.classList.remove('active-gold', 'active-dark'); });
-    btn.classList.add(choix === 'oui' ? 'active-gold' : 'active-dark');
-    const field = document.getElementById('remise-field');
-    if (choix === 'oui') {
-      field.classList.add('visible');
-    } else {
-      field.classList.remove('visible');
-      document.getElementById('remise_pct').value = '0';
-    }
-  }
-
-  function setPaiement(type, btn) {
-    document.getElementById('paiement').value = type;
-    ['pay-aucun', 'pay-reception', 'pay-acompte'].forEach(id => {
-      document.getElementById(id).classList.remove('active-gold', 'active-dark');
-    });
-    btn.classList.add('active-gold');
-    document.getElementById('acompte-field').classList.toggle('visible', type === 'acompte');
   }
 </script>
 
