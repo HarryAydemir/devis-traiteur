@@ -110,7 +110,7 @@ HORS = [
     "Grande salade à composée",
     "Mezze",
     "Cocktail Avec Alcool",
-    "Cocktail Sans Alcool"
+    "Cocktail Sans Alcool",
     "Bonbonnière",
     "Percolateur"
 ]
