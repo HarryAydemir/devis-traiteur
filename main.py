@@ -106,7 +106,7 @@ HORS = [
     "Plateau de Charcuterie/Fromage",
     "Plateau de Légumes à croquer",
     "Plateau de Fruits",
-    "Assiette de Fruits";
+    "Assiette de Fruits",
     "Grande salade à composée",
     "Mezze",
     "Cocktail Avec Alcool",
