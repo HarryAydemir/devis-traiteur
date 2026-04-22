@@ -19,7 +19,6 @@ PRODUCTS = {
     "Club Suédois Saumon Fumé": 1.20,
     "Club Suédois Legumes Marinés": 1.20,
     "Club Suédois Rillete Poulet Rôti": 1.20,
-    "Navette": 1.40,
     "Navette Saumon Fumé": 1.40,
     "Navette Legumes Marinés": 1.40,
     "Navette Rillette Poulet Rôti": 1.40,
