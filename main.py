@@ -4,7 +4,13 @@ from flask import Flask, render_template, request, send_file
 import io
 from datetime import datetime
 
-LOGO_PATH = "logo.jpg"
+import os
+for _ext in ["logo.png", "logo.PNG", "logo.jpg", "logo.JPG", "logo.jpeg"]:
+    if os.path.exists(_ext):
+        LOGO_PATH = _ext
+        break
+else:
+    LOGO_PATH = "logo.png"
 
 GOLD = (0.85, 0.7, 0.2)
 BLACK = (0, 0, 0)
