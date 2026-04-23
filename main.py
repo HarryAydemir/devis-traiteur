@@ -1,6 +1,6 @@
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
-from flask import Flask, render_template, request, send_file
+from flask import Flask, render_template, request, send_file, session, redirect, url_for
 import io
 from datetime import datetime
 
@@ -12,13 +12,16 @@ for _ext in ["logo.png", "logo.PNG", "logo.jpg", "logo.JPG", "logo.jpeg"]:
 else:
     LOGO_PATH = "logo.png"
 
-GOLD = (0.85, 0.7, 0.2)
+GOLD  = (0.85, 0.7, 0.2)
 BLACK = (0, 0, 0)
-GRAY = (0.5, 0.5, 0.5)
-RED  = (0.75, 0.15, 0.15)
+GRAY  = (0.5, 0.5, 0.5)
+RED   = (0.75, 0.15, 0.15)
+
+MOT_DE_PASSE = "2627"
+FOOTER_TEXT  = "www.saladeandcake.com  —  contact@saladeandcake.com"
 
 # =========================
-# NUMÉROTATION (date + heure, toujours unique)
+# NUMÉROTATION
 # =========================
 def get_numero():
     return datetime.now().strftime("D-%Y%m%d-%H%M")
@@ -154,14 +157,22 @@ def calc_total(products, hors, supp, libres):
 def generate_pdf_buffer(nom, adresse, personnes, products, hors, supp, libres,
                         total, buffer, numero, remise_pct, remise_euros):
     c = canvas.Canvas(buffer, pagesize=A4)
+    page_width = A4[0]
 
     COL_NOM  = 50
-    COL_QTE  = 310
-    COL_PU   = 370
+    COL_QTE  = 330
+    COL_PU   = 390
     COL_EURO = 510
-    Y_MIN    = 60
+    Y_MIN    = 45
+
+    def draw_footer():
+        c.setFont("Helvetica", 8)
+        c.setFillColorRGB(*GRAY)
+        c.drawCentredString(page_width / 2, 25, FOOTER_TEXT)
+        c.setFillColorRGB(*BLACK)
 
     def nouvelle_page():
+        draw_footer()
         c.showPage()
         c.setFillColorRGB(*BLACK)
         c.setFont("Helvetica", 9)
@@ -174,7 +185,7 @@ def generate_pdf_buffer(nom, adresse, personnes, products, hors, supp, libres,
 
     # ---- LOGO ----
     try:
-        c.drawImage(LOGO_PATH, 230, 720, width=130, height=130,
+        c.drawImage(LOGO_PATH, 235, 690, width=130, height=130,
                     preserveAspectRatio=True, mask='auto')
     except:
         pass
@@ -182,27 +193,27 @@ def generate_pdf_buffer(nom, adresse, personnes, products, hors, supp, libres,
     # ---- TITRE ----
     c.setFont("Helvetica-Bold", 20)
     c.setFillColorRGB(*GOLD)
-    c.drawCentredString(300, 700, "DEVIS TRAITEUR")
+    c.drawCentredString(300, 678, "DEVIS TRAITEUR")
 
     # ---- NUMÉRO + DATE ----
     c.setFont("Helvetica", 9)
     c.setFillColorRGB(*GRAY)
     date_str = datetime.now().strftime("%d/%m/%Y")
-    c.drawCentredString(300, 686, f"N° {numero}  —  {date_str}")
+    c.drawCentredString(300, 664, f"N° {numero}  —  {date_str}")
 
     # ---- INFOS CLIENT ----
     c.setFillColorRGB(*BLACK)
     c.setFont("Helvetica", 10)
-    c.drawString(50, 670, f"Client : {nom}")
-    c.drawString(50, 655, f"Adresse : {adresse}")
-    c.drawString(50, 640, f"Personnes : {personnes}")
+    c.drawString(50, 648, f"Client : {nom}")
+    c.drawString(50, 633, f"Adresse : {adresse}")
+    c.drawString(50, 618, f"Personnes : {personnes}")
 
-    y = 610
+    y = 595
 
     # ---- EN-TÊTES ----
     c.setFont("Helvetica-Bold", 10)
     c.drawString(COL_NOM,  y, "Produit")
-    c.drawString(COL_QTE,  y, "Qté")
+    c.drawRightString(COL_QTE,  y, "Qté")
     c.drawRightString(COL_PU,   y, "PU (€)")
     c.drawRightString(COL_EURO, y, "Total (€)")
     y -= 15
@@ -218,7 +229,7 @@ def generate_pdf_buffer(nom, adresse, personnes, products, hors, supp, libres,
             c.drawRightString(COL_EURO, y, "OFFERT")
         else:
             c.drawString(COL_NOM, y, p[:50])
-            c.drawString(COL_QTE, y, str(q))
+            c.drawRightString(COL_QTE,  y, str(q))
             c.drawRightString(COL_PU,   y, f"{pr:.2f}")
             c.drawRightString(COL_EURO, y, f"{q*pr:.2f}")
         y -= 12
@@ -228,7 +239,7 @@ def generate_pdf_buffer(nom, adresse, personnes, products, hors, supp, libres,
         for (intitule, (q, pu)) in libres:
             y = check_y(y)
             c.drawString(COL_NOM, y, intitule[:50])
-            c.drawString(COL_QTE, y, str(q))
+            c.drawRightString(COL_QTE,  y, str(q))
             c.drawRightString(COL_PU,   y, f"{pu:.2f}")
             c.drawRightString(COL_EURO, y, f"{q*pu:.2f}")
             y -= 12
@@ -239,7 +250,7 @@ def generate_pdf_buffer(nom, adresse, personnes, products, hors, supp, libres,
         y = check_y(y, 30)
         c.setFont("Helvetica-Bold", 10)
         c.drawString(COL_NOM, y, "Hors Mignardises")
-        c.drawString(COL_QTE, y, "Qté")
+        c.drawRightString(COL_QTE,  y, "Qté")
         c.drawRightString(COL_PU,   y, "PU (€)")
         c.drawRightString(COL_EURO, y, "Total (€)")
         y -= 12
@@ -253,7 +264,7 @@ def generate_pdf_buffer(nom, adresse, personnes, products, hors, supp, libres,
             if v[0] == "OFFERT":
                 c.drawRightString(COL_EURO, y, "OFFERT")
             else:
-                c.drawString(COL_QTE,       y, str(v[0]))
+                c.drawRightString(COL_QTE,  y, str(v[0]))
                 c.drawRightString(COL_PU,   y, f"{v[1]:.2f}")
                 c.drawRightString(COL_EURO, y, f"{v[2]:.2f}")
             y -= 12
@@ -288,14 +299,12 @@ def generate_pdf_buffer(nom, adresse, personnes, products, hors, supp, libres,
     has_remise = (remise_pct > 0) or (remise_euros > 0)
 
     if has_remise:
-        # Total avant remise
         c.setFont("Helvetica", 11)
         c.setFillColorRGB(*BLACK)
         c.drawString(COL_NOM, y, "Total")
         c.drawRightString(COL_EURO, y, f"{total:.2f} €")
         y -= 16
 
-        # Remise
         if remise_pct > 0:
             montant_remise = total * remise_pct / 100
             libelle_remise = f"Remise ({remise_pct:.1f}%)"
@@ -309,20 +318,15 @@ def generate_pdf_buffer(nom, adresse, personnes, products, hors, supp, libres,
         y -= 16
 
         total_final = total - montant_remise
-
-        # Ligne séparation
         c.setFillColorRGB(*BLACK)
         c.line(350, y - 3, 550, y - 3)
         y -= 16
 
-        # Total après remise
         c.setFont("Helvetica-Bold", 14)
         c.setFillColorRGB(*GOLD)
         c.drawString(COL_NOM, y, "TOTAL")
         c.drawRightString(COL_EURO, y, f"{total_final:.2f} €")
-
     else:
-        # Pas de remise — juste le total
         c.line(350, y - 3, 550, y - 3)
         y -= 16
         c.setFont("Helvetica-Bold", 14)
@@ -331,24 +335,50 @@ def generate_pdf_buffer(nom, adresse, personnes, products, hors, supp, libres,
         c.drawRightString(COL_EURO, y, f"{total:.2f} €")
 
     c.setFillColorRGB(*BLACK)
+
+    # ---- PIED DE PAGE DERNIÈRE PAGE ----
+    draw_footer()
+
     c.save()
 
 # =========================
 # FLASK APP
 # =========================
 app = Flask(__name__)
+app.secret_key = "salade_and_cake_secret_2627"
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    erreur = ""
+    if request.method == "POST":
+        mdp = request.form.get("mdp", "").strip()
+        if mdp == MOT_DE_PASSE:
+            session["connecte"] = True
+            return redirect(url_for("index"))
+        else:
+            erreur = "Mot de passe incorrect."
+    return render_template("login.html", erreur=erreur)
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect(url_for("login"))
 
 @app.route("/")
 def index():
+    if not session.get("connecte"):
+        return redirect(url_for("login"))
     return render_template("form.html", products=PRODUCTS, hors=HORS)
 
 @app.route("/generer", methods=["POST"])
 def generer():
+    if not session.get("connecte"):
+        return redirect(url_for("login"))
+
     nom       = request.form.get("nom")
     adresse   = request.form.get("adresse")
     personnes = int(request.form.get("personnes"))
 
-    # Remise — un seul champ actif à la fois grâce au HTML
     remise_pct   = float(request.form.get("remise_pct",   "0") or "0")
     remise_euros = float(request.form.get("remise_euros", "0") or "0")
 
@@ -381,7 +411,6 @@ def generer():
         elif val != "0" and val != "":
             supp[item] = float(val)
 
-    # Produits libres
     libres = []
     i = 1
     while True:

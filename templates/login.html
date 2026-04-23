@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Connexion - Salade and Cake</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #1a1a1a; color: #f0f0f0;
+      font-family: 'Georgia', serif;
+      display: flex; align-items: center; justify-content: center;
+      min-height: 100vh;
+    }
+    .login-box {
+      background: #2a2a2a; border-radius: 12px;
+      padding: 40px 32px; width: 100%; max-width: 360px;
+      text-align: center;
+    }
+    h1 { color: #d4af37; font-size: 1.5em; margin-bottom: 8px; letter-spacing: 2px; }
+    p.sub { color: #888; font-size: 0.85em; margin-bottom: 28px; }
+    input[type="password"] {
+      width: 100%; padding: 14px; border-radius: 8px;
+      border: 1px solid #444; background: #1a1a1a;
+      color: #f0f0f0; font-size: 1.2em; text-align: center;
+      letter-spacing: 6px; margin-bottom: 16px;
+    }
+    button {
+      width: 100%; padding: 14px; background: #d4af37;
+      color: #1a1a1a; font-size: 1em; font-weight: bold;
+      border: none; border-radius: 8px; cursor: pointer;
+      letter-spacing: 1px;
+    }
+    button:hover { background: #c49b2a; }
+    .erreur { color: #e74c3c; font-size: 0.85em; margin-bottom: 12px; }
+  </style>
+</head>
+<body>
+  <div class="login-box">
+    <h1>🍽 Salade and Cake</h1>
+    <p class="sub">Accès réservé</p>
+    {% if erreur %}
+    <div class="erreur">{{ erreur }}</div>
+    {% endif %}
+    <form method="POST">
+      <input type="password" name="mdp" placeholder="••••" maxlength="4" autofocus>
+      <button type="submit">Accéder</button>
+    </form>
+  </div>
+</body>
+</html>
