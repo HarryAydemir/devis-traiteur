@@ -4,7 +4,7 @@ from flask import Flask, render_template, request, send_file
 import io
 from datetime import datetime
 
-LOGO_PATH = "logo.png"
+LOGO_PATH = "logo.jpg"
 
 GOLD = (0.85, 0.7, 0.2)
 BLACK = (0, 0, 0)
