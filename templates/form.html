@@ -7,7 +7,7 @@
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { background: #1a1a1a; color: #f0f0f0; font-family: 'Georgia', serif; padding: 20px; }
-    h1 { color: #d4af37; text-align: center; margin-bottom: 30px; font-size: 1.8em; letter-spacing: 2px; }
+    h1 { color: #d4af37; text-align: center; margin-bottom: 10px; font-size: 1.8em; letter-spacing: 2px; }
     h2 { color: #d4af37; margin: 25px 0 15px; font-size: 1.1em; border-bottom: 1px solid #d4af37; padding-bottom: 6px; }
     .section { background: #2a2a2a; border-radius: 10px; padding: 20px; margin-bottom: 20px; }
     label { display: block; margin-bottom: 4px; font-size: 0.85em; color: #ccc; }
@@ -80,11 +80,21 @@
       font-family: 'Georgia', serif;
     }
     .add-libre-btn:hover { background: #d4af3722; }
+
+    /* Lien facture */
+    .facture-link {
+      display: block; text-align: center; margin-bottom: 28px;
+      padding: 12px; border: 1px solid #444; border-radius: 8px;
+      color: #d4af37; text-decoration: none; font-size: 0.95em;
+      background: #2a2a2a; transition: all 0.2s;
+    }
+    .facture-link:hover { background: #333; border-color: #d4af37; }
   </style>
 </head>
 <body>
 
 <h1>🍽 Devis Traiteur</h1>
+<a href="/facture" class="facture-link">🧾 Créer une Facture</a>
 
 <form action="/generer" method="POST">
 
@@ -177,14 +187,12 @@
         <button type="button" onclick="setRemiseType('eur', this)">En montant (€)</button>
       </div>
 
-      <!-- Remise en % -->
       <div class="remise-input" id="remise-pct-field">
         <label>Taux de remise (%)</label>
         <input type="number" name="remise_pct" id="remise_pct" value="0" min="0" max="100" step="0.5" placeholder="Ex: 10">
         <div class="field-hint">Ex : 10 pour une remise de 10% — le PDF affichera : Total / Remise / Total remisé</div>
       </div>
 
-      <!-- Remise en € -->
       <div class="remise-input" id="remise-eur-field">
         <label>Montant de la remise (€)</label>
         <input type="number" name="remise_euros" id="remise_euros" value="0" min="0" step="0.5" placeholder="Ex: 100">
