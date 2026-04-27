@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Facture - Salade and Cake</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #1a1a1a; color: #f0f0f0; font-family: 'Georgia', serif; padding: 20px; }
+    h1 { color: #d4af37; text-align: center; margin-bottom: 6px; font-size: 1.8em; letter-spacing: 2px; }
+    .nav-link { text-align: center; margin-bottom: 24px; }
+    .nav-link a { color: #888; font-size: 0.85em; text-decoration: none; }
+    .nav-link a:hover { color: #d4af37; }
+    h2 { color: #d4af37; margin: 25px 0 15px; font-size: 1.1em; border-bottom: 1px solid #d4af37; padding-bottom: 6px; }
+    .section { background: #2a2a2a; border-radius: 10px; padding: 20px; margin-bottom: 20px; }
+    label { display: block; margin-bottom: 4px; font-size: 0.85em; color: #ccc; }
+    input[type="text"], input[type="number"], textarea {
+      width: 100%; padding: 10px; border-radius: 6px;
+      border: 1px solid #444; background: #1a1a1a;
+      color: #f0f0f0; font-size: 0.95em; margin-bottom: 14px;
+      font-family: 'Georgia', serif;
+    }
+    textarea { resize: vertical; min-height: 70px; }
+    .product-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; gap: 10px; }
+    .product-row span { flex: 1; font-size: 0.85em; color: #eee; }
+    .product-row small { color: #d4af37; font-size: 0.75em; white-space: nowrap; }
+    .product-row input { width: 90px; margin-bottom: 0; }
+    button[type="submit"] {
+      width: 100%; padding: 16px; background: #d4af37;
+      color: #1a1a1a; font-size: 1.1em; font-weight: bold;
+      border: none; border-radius: 10px; cursor: pointer;
+      letter-spacing: 1px; margin-top: 10px;
+    }
+    button[type="submit"]:hover { background: #c49b2a; }
+
+    .toggle-btn-group { display: flex; gap: 10px; margin-bottom: 8px; }
+    .toggle-btn-group button {
+      flex: 1; padding: 8px; border-radius: 6px; border: 1px solid #444;
+      background: #1a1a1a; color: #ccc; font-size: 0.85em; cursor: pointer; transition: all 0.2s;
+    }
+    .toggle-btn-group button.active-oui { background: #d4af37; color: #1a1a1a; border-color: #d4af37; font-weight: bold; }
+    .toggle-btn-group button.active-non { background: #555; color: #fff; border-color: #555; font-weight: bold; }
+
+    .hidden-field { display: none; }
+    .hidden-field.visible { display: block; }
+    .hidden-field input { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #444; background: #1a1a1a; color: #f0f0f0; font-size: 0.95em; margin-bottom: 0; }
+    .field-hint { font-size: 0.75em; color: #888; margin-top: 4px; }
+
+    /* Statut paiement */
+    .statut-group { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
+    .statut-group button {
+      flex: 1; min-width: 120px; padding: 10px; border-radius: 8px; border: 2px solid #444;
+      background: #1a1a1a; color: #ccc; font-size: 0.9em; cursor: pointer; transition: all 0.2s;
+      font-family: 'Georgia', serif;
+    }
+    .statut-group button.active-paye   { background: #1a6b1a; border-color: #2ecc71; color: #fff; font-weight: bold; }
+    .statut-group button.active-apayer { background: #8b1a1a; border-color: #e74c3c; color: #fff; font-weight: bold; }
+    .statut-group button.active-acompte{ background: #6b5a00; border-color: #d4af37; color: #fff; font-weight: bold; }
+
+    /* Remise */
+    .remise-options { display: none; margin-top: 14px; }
+    .remise-options.visible { display: block; }
+    .remise-type-group { display: flex; gap: 10px; margin-bottom: 14px; }
+    .remise-type-group button {
+      flex: 1; padding: 8px; border-radius: 6px; border: 1px solid #444;
+      background: #1a1a1a; color: #ccc; font-size: 0.85em; cursor: pointer; transition: all 0.2s;
+    }
+    .remise-type-group button.active-oui { background: #d4af37; color: #1a1a1a; border-color: #d4af37; font-weight: bold; }
+    .remise-input { display: none; }
+    .remise-input.visible { display: block; }
+    .remise-input input { width: 160px; padding: 10px; border-radius: 6px; border: 1px solid #444; background: #1a1a1a; color: #f0f0f0; font-size: 0.95em; }
+
+    /* Acompte */
+    .acompte-field { display: none; margin-top: 12px; }
+    .acompte-field.visible { display: block; }
+    .acompte-type-group { display: flex; gap: 10px; margin-bottom: 10px; }
+    .acompte-type-group button {
+      flex: 1; padding: 8px; border-radius: 6px; border: 1px solid #444;
+      background: #1a1a1a; color: #ccc; font-size: 0.85em; cursor: pointer; transition: all 0.2s;
+    }
+    .acompte-type-group button.active-oui { background: #d4af37; color: #1a1a1a; border-color: #d4af37; font-weight: bold; }
+    .acompte-input { display: none; }
+    .acompte-input.visible { display: block; }
+    .acompte-input input { width: 160px; padding: 10px; border-radius: 6px; border: 1px solid #444; background: #1a1a1a; color: #f0f0f0; font-size: 0.95em; }
+
+    /* Produits libres */
+    .libre-row { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; }
+    .libre-row input.libre-nom { flex: 1; margin-bottom: 0; }
+    .libre-row input.libre-num { width: 80px; margin-bottom: 0; }
+    .libre-row button.del-btn { background: #444; border: none; color: #ccc; border-radius: 6px; padding: 8px 12px; cursor: pointer; font-size: 1em; flex-shrink: 0; }
+    .libre-row button.del-btn:hover { background: #c0392b; color: #fff; }
+    .add-libre-btn { width: 100%; padding: 10px; background: transparent; border: 1px dashed #d4af37; color: #d4af37; border-radius: 8px; cursor: pointer; font-size: 0.9em; margin-top: 8px; font-family: 'Georgia', serif; }
+    .add-libre-btn:hover { background: #d4af3722; }
+
+    .tva-note { font-size: 0.75em; color: #d4af37; margin-top: 4px; }
+  </style>
+</head>
+<body>
+
+<h1>🧾 Facture Traiteur</h1>
+<div class="nav-link"><a href="/">← Retour au Devis</a></div>
+
+<form action="/generer_facture" method="POST">
+
+  <!-- INFOS CLIENT -->
+  <div class="section">
+    <h2>Informations client</h2>
+    <label>Nom du client</label>
+    <input type="text" name="nom" required>
+    <label>Adresse de prestation</label>
+    <input type="text" name="adresse" required>
+    <label>Nombre de personnes</label>
+    <input type="number" name="personnes" required min="1">
+    <label>Informations complémentaires client (optionnel)</label>
+    <textarea name="info_client" placeholder="Email, téléphone, référence commande..."></textarea>
+  </div>
+
+  <!-- STATUT PAIEMENT -->
+  <div class="section">
+    <h2>Statut de la facture</h2>
+    <div class="statut-group">
+      <button type="button" id="btn-apayer" class="active-apayer" onclick="setStatut('a_payer', this)">À PAYER</button>
+      <button type="button" id="btn-paye" onclick="setStatut('paye', this)">✓ PAYÉ</button>
+      <button type="button" id="btn-acompte" onclick="setStatut('acompte', this)">Acompte versé</button>
+    </div>
+    <input type="hidden" name="statut" id="statut" value="a_payer">
+
+    <!-- Champs acompte -->
+    <div class="acompte-field" id="acompte-field">
+      <p style="font-size:0.8em; color:#aaa; margin-bottom:10px;">Montant de l'acompte déjà versé :</p>
+      <div class="acompte-type-group">
+        <button type="button" onclick="setAcompteType('pct', this)">En % du total TTC</button>
+        <button type="button" onclick="setAcompteType('eur', this)">En montant (€)</button>
+      </div>
+      <div class="acompte-input" id="acompte-pct-field">
+        <input type="number" name="acompte_pct" id="acompte_pct" value="0" min="0" max="100" step="1" placeholder="Ex: 30">
+        <input type="hidden" name="acompte_euros" value="0">
+        <div class="field-hint">Ex : 30 pour un acompte de 30% du total TTC</div>
+      </div>
+      <div class="acompte-input" id="acompte-eur-field">
+        <input type="number" name="acompte_euros" id="acompte_euros" value="0" min="0" step="0.5" placeholder="Ex: 500">
+        <input type="hidden" name="acompte_pct" value="0">
+        <div class="field-hint">Montant exact de l'acompte en euros</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PRODUITS -->
+  <div class="section">
+    <h2>Produits</h2>
+    <p style="font-size:0.8em; color:#aaa; margin-bottom:4px;">Entrez une quantité, "offert", ou laissez 0</p>
+    <p class="tva-note">TVA 10% sur tous les produits</p>
+    <br>
+    {% for name, price in products.items() %}
+    <div class="product-row">
+      <span>{{ name }} <small>{{ price }}€</small></span>
+      <input type="text" name="prod_{{ name }}" value="0">
+    </div>
+    {% endfor %}
+
+    <!-- PRODUITS LIBRES -->
+    <div style="margin-top:18px; border-top:1px solid #444; padding-top:14px;">
+      <p style="font-size:0.8em; color:#aaa; margin-bottom:4px;">Produits personnalisés</p>
+      <p class="tva-note">TVA 10%</p>
+      <br>
+      <div style="display:flex; gap:8px; margin-bottom:6px;">
+        <span style="flex:1; font-size:0.75em; color:#888;">Intitulé</span>
+        <span style="width:80px; font-size:0.75em; color:#888; text-align:center;">Qté</span>
+        <span style="width:80px; font-size:0.75em; color:#888; text-align:center;">Prix unit.</span>
+        <span style="width:36px;"></span>
+      </div>
+      <div id="libres-container"></div>
+      <button type="button" class="add-libre-btn" onclick="ajouterLibre()">+ Ajouter un produit personnalisé</button>
+    </div>
+  </div>
+
+  <!-- HORS MIGNARDISES -->
+  <div class="section">
+    <h2>Hors Mignardises</h2>
+    <p style="font-size:0.8em; color:#aaa; margin-bottom:4px;">Entrez une quantité et un prix unitaire, ou écrivez "offert"</p>
+    <p class="tva-note">TVA 10% sauf Cocktail Avec Alcool (TVA 20%)</p>
+    <br>
+    <div style="display:flex; gap:10px; margin-bottom:8px;">
+      <span style="flex:1; font-size:0.75em; color:#888;">Article</span>
+      <span style="width:70px; font-size:0.75em; color:#888; text-align:center;">Qté</span>
+      <span style="width:90px; font-size:0.75em; color:#888; text-align:center;">Prix unit.</span>
+    </div>
+    {% for item in hors %}
+    <div class="product-row">
+      <span>{{ item }}{% if item == "Cocktail Avec Alcool" %} <small style="color:#e74c3c;">TVA 20%</small>{% endif %}</span>
+      <input type="text" name="hors_qte_{{ item }}" value="0" style="width:70px;">
+      <input type="text" name="hors_pu_{{ item }}" value="0" style="width:90px;" placeholder="€ ou offert">
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- SUPPLÉMENTS -->
+  <div class="section">
+    <h2>Suppléments</h2>
+    <p style="font-size:0.8em; color:#aaa; margin-bottom:4px;">Sélectionnez Oui pour activer</p>
+    <p class="tva-note">TVA 20% sur les suppléments</p>
+    <br>
+    {% for item in ["Livraison", "Installation", "Service"] %}
+    <div style="margin-bottom:16px;">
+      <div style="font-size:0.9em; color:#eee; margin-bottom:8px;">{{ item }}</div>
+      <div class="toggle-btn-group">
+        <button type="button" onclick="toggleSupp('{{ item }}', 'oui', this)">Oui</button>
+        <button type="button" onclick="toggleSupp('{{ item }}', 'non', this)" class="active-non">Non</button>
+      </div>
+      <div class="hidden-field" id="prix_{{ item }}">
+        <input type="text" name="supp_{{ item }}" value="0" placeholder="Ex: 50 ou offert">
+        <div class="field-hint">Montant TTC en €</div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- REMISE -->
+  <div class="section">
+    <h2>Remise</h2>
+    <p style="font-size:0.8em; color:#aaa; margin-bottom:12px;">Appliquer une remise sur le total TTC ?</p>
+    <div class="toggle-btn-group">
+      <button type="button" onclick="toggleRemise('oui', this)">Oui</button>
+      <button type="button" onclick="toggleRemise('non', this)" class="active-non">Non</button>
+    </div>
+    <div class="remise-options" id="remise-options">
+      <div class="remise-type-group">
+        <button type="button" onclick="setRemiseType('pct', this)">En pourcentage (%)</button>
+        <button type="button" onclick="setRemiseType('eur', this)">En montant (€)</button>
+      </div>
+      <div class="remise-input" id="remise-pct-field">
+        <label>Taux de remise (%)</label>
+        <input type="number" name="remise_pct" id="remise_pct" value="0" min="0" max="100" step="0.5">
+        <input type="hidden" name="remise_euros" value="0">
+      </div>
+      <div class="remise-input" id="remise-eur-field">
+        <label>Montant de la remise TTC (€)</label>
+        <input type="number" name="remise_euros" id="remise_euros" value="0" min="0" step="0.5">
+        <input type="hidden" name="remise_pct" value="0">
+      </div>
+    </div>
+  </div>
+
+  <button type="submit">🧾 Générer la Facture PDF</button>
+
+</form>
+
+<script>
+  let libreCount = 0;
+
+  function ajouterLibre() {
+    libreCount++;
+    const container = document.getElementById('libres-container');
+    const div = document.createElement('div');
+    div.className = 'libre-row';
+    div.id = `libre-row-${libreCount}`;
+    div.innerHTML = `
+      <input type="text" class="libre-nom" name="libre_nom_${libreCount}" placeholder="Intitulé">
+      <input type="number" class="libre-num" name="libre_qte_${libreCount}" value="1" min="1">
+      <input type="number" class="libre-num" name="libre_pu_${libreCount}" value="0" min="0" step="0.5">
+      <button type="button" class="del-btn" onclick="supprimerLibre(${libreCount})">✕</button>
+    `;
+    container.appendChild(div);
+  }
+
+  function supprimerLibre(id) {
+    const row = document.getElementById(`libre-row-${id}`);
+    if (row) row.remove();
+  }
+
+  function setStatut(type, btn) {
+    document.getElementById('statut').value = type;
+    ['btn-apayer','btn-paye','btn-acompte'].forEach(id => {
+      document.getElementById(id).className = '';
+    });
+    if (type === 'paye')    btn.className = 'active-paye';
+    if (type === 'a_payer') btn.className = 'active-apayer';
+    if (type === 'acompte') btn.className = 'active-acompte';
+    document.getElementById('acompte-field').classList.toggle('visible', type === 'acompte');
+  }
+
+  function setAcompteType(type, btn) {
+    btn.closest('.acompte-type-group').querySelectorAll('button').forEach(b => b.classList.remove('active-oui'));
+    btn.classList.add('active-oui');
+    document.querySelectorAll('.acompte-input').forEach(f => f.classList.remove('visible'));
+    if (type === 'pct') {
+      document.getElementById('acompte-pct-field').classList.add('visible');
+      document.getElementById('acompte_euros').value = '0';
+    } else {
+      document.getElementById('acompte-eur-field').classList.add('visible');
+      document.getElementById('acompte_pct').value = '0';
+    }
+  }
+
+  function toggleSupp(item, choix, btn) {
+    const buttons = btn.closest('.toggle-btn-group').querySelectorAll('button');
+    const field = document.getElementById('prix_' + item);
+    buttons.forEach(b => { b.classList.remove('active-oui', 'active-non'); });
+    if (choix === 'oui') {
+      btn.classList.add('active-oui');
+      field.classList.add('visible');
+      field.querySelector('input').value = '';
+    } else {
+      btn.classList.add('active-non');
+      field.classList.remove('visible');
+      field.querySelector('input').value = '0';
+    }
+  }
+
+  function toggleRemise(choix, btn) {
+    const buttons = btn.closest('.toggle-btn-group').querySelectorAll('button');
+    buttons.forEach(b => { b.classList.remove('active-oui', 'active-non'); });
+    btn.classList.add(choix === 'oui' ? 'active-oui' : 'active-non');
+    document.getElementById('remise-options').classList.toggle('visible', choix === 'oui');
+    if (choix !== 'oui') {
+      document.getElementById('remise_pct').value = '0';
+      document.getElementById('remise_euros').value = '0';
+      document.querySelectorAll('.remise-input').forEach(f => f.classList.remove('visible'));
+      document.querySelectorAll('.remise-type-group button').forEach(b => b.classList.remove('active-oui'));
+    }
+  }
+
+  function setRemiseType(type, btn) {
+    btn.closest('.remise-type-group').querySelectorAll('button').forEach(b => b.classList.remove('active-oui'));
+    btn.classList.add('active-oui');
+    document.querySelectorAll('.remise-input').forEach(f => f.classList.remove('visible'));
+    if (type === 'pct') {
+      document.getElementById('remise-pct-field').classList.add('visible');
+      document.getElementById('remise_euros').value = '0';
+    } else {
+      document.getElementById('remise-eur-field').classList.add('visible');
+      document.getElementById('remise_pct').value = '0';
+    }
+  }
+</script>
+
+</body>
+</html>
