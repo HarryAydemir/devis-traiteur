@@ -8,18 +8,24 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { background: #1a1a1a; color: #f0f0f0; font-family: 'Georgia', serif; padding: 20px; }
     h1 { color: #d4af37; text-align: center; margin-bottom: 6px; font-size: 1.8em; letter-spacing: 2px; }
-    .nav-link { text-align: center; margin-bottom: 24px; }
-    .nav-link a { color: #888; font-size: 0.85em; text-decoration: none; }
-    .nav-link a:hover { color: #d4af37; }
+    .nav-links { display: flex; gap: 10px; margin-bottom: 24px; }
+    .nav-link {
+      flex: 1; display: block; text-align: center;
+      padding: 12px; border: 1px solid #444; border-radius: 8px;
+      color: #d4af37; text-decoration: none; font-size: 0.9em;
+      background: #2a2a2a; transition: all 0.2s;
+    }
+    .nav-link:hover { background: #333; border-color: #d4af37; }
     h2 { color: #d4af37; margin: 25px 0 15px; font-size: 1.1em; border-bottom: 1px solid #d4af37; padding-bottom: 6px; }
     .section { background: #2a2a2a; border-radius: 10px; padding: 20px; margin-bottom: 20px; }
     label { display: block; margin-bottom: 4px; font-size: 0.85em; color: #ccc; }
-    input[type="text"], input[type="number"], textarea {
+    input[type="text"], input[type="number"], input[type="date"], textarea {
       width: 100%; padding: 10px; border-radius: 6px;
       border: 1px solid #444; background: #1a1a1a;
       color: #f0f0f0; font-size: 0.95em; margin-bottom: 14px;
       font-family: 'Georgia', serif;
     }
+    input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); }
     textarea { resize: vertical; min-height: 70px; }
     .product-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; gap: 10px; }
     .product-row span { flex: 1; font-size: 0.85em; color: #eee; }
@@ -46,7 +52,6 @@
     .hidden-field input { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #444; background: #1a1a1a; color: #f0f0f0; font-size: 0.95em; margin-bottom: 0; }
     .field-hint { font-size: 0.75em; color: #888; margin-top: 4px; }
 
-    /* Statut paiement */
     .statut-group { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
     .statut-group button {
       flex: 1; min-width: 120px; padding: 10px; border-radius: 8px; border: 2px solid #444;
@@ -57,7 +62,6 @@
     .statut-group button.active-apayer { background: #8b1a1a; border-color: #e74c3c; color: #fff; font-weight: bold; }
     .statut-group button.active-acompte{ background: #6b5a00; border-color: #d4af37; color: #fff; font-weight: bold; }
 
-    /* Remise */
     .remise-options { display: none; margin-top: 14px; }
     .remise-options.visible { display: block; }
     .remise-type-group { display: flex; gap: 10px; margin-bottom: 14px; }
@@ -70,7 +74,6 @@
     .remise-input.visible { display: block; }
     .remise-input input { width: 160px; padding: 10px; border-radius: 6px; border: 1px solid #444; background: #1a1a1a; color: #f0f0f0; font-size: 0.95em; }
 
-    /* Acompte */
     .acompte-field { display: none; margin-top: 12px; }
     .acompte-field.visible { display: block; }
     .acompte-type-group { display: flex; gap: 10px; margin-bottom: 10px; }
@@ -83,7 +86,6 @@
     .acompte-input.visible { display: block; }
     .acompte-input input { width: 160px; padding: 10px; border-radius: 6px; border: 1px solid #444; background: #1a1a1a; color: #f0f0f0; font-size: 0.95em; }
 
-    /* Produits libres */
     .libre-row { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; }
     .libre-row input.libre-nom { flex: 1; margin-bottom: 0; }
     .libre-row input.libre-num { width: 80px; margin-bottom: 0; }
@@ -91,14 +93,16 @@
     .libre-row button.del-btn:hover { background: #c0392b; color: #fff; }
     .add-libre-btn { width: 100%; padding: 10px; background: transparent; border: 1px dashed #d4af37; color: #d4af37; border-radius: 8px; cursor: pointer; font-size: 0.9em; margin-top: 8px; font-family: 'Georgia', serif; }
     .add-libre-btn:hover { background: #d4af3722; }
-
     .tva-note { font-size: 0.75em; color: #d4af37; margin-top: 4px; }
   </style>
 </head>
 <body>
 
 <h1>🧾 Facture Traiteur</h1>
-<div class="nav-link"><a href="/">← Retour au Devis</a></div>
+<div class="nav-links">
+  <a href="/" class="nav-link">← Devis</a>
+  <a href="/planning" class="nav-link">📅 Planning</a>
+</div>
 
 <form action="/generer_facture" method="POST">
 
@@ -111,6 +115,8 @@
     <input type="text" name="adresse" required>
     <label>Nombre de personnes</label>
     <input type="number" name="personnes" required min="1">
+    <label>Date de prestation</label>
+    <input type="date" name="date_prestation">
     <label>Informations complémentaires client (optionnel)</label>
     <textarea name="info_client" placeholder="Email, téléphone, référence commande..."></textarea>
   </div>
@@ -125,7 +131,6 @@
     </div>
     <input type="hidden" name="statut" id="statut" value="a_payer">
 
-    <!-- Champs acompte -->
     <div class="acompte-field" id="acompte-field">
       <p style="font-size:0.8em; color:#aaa; margin-bottom:10px;">Montant de l'acompte déjà versé :</p>
       <div class="acompte-type-group">
@@ -158,7 +163,6 @@
     </div>
     {% endfor %}
 
-    <!-- PRODUITS LIBRES -->
     <div style="margin-top:18px; border-top:1px solid #444; padding-top:14px;">
       <p style="font-size:0.8em; color:#aaa; margin-bottom:4px;">Produits personnalisés</p>
       <p class="tva-note">TVA 10%</p>

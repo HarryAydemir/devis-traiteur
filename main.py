@@ -1,8 +1,9 @@
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
-from flask import Flask, render_template, request, send_file, session, redirect, url_for
+from flask import Flask, render_template, request, send_file, session, redirect, url_for, jsonify
 import io
 from datetime import datetime
+import requests as req
 
 import os
 for _ext in ["logo.png", "logo.PNG", "logo.jpg", "logo.JPG", "logo.jpeg"]:
@@ -21,6 +22,14 @@ GREEN = (0.1, 0.55, 0.1)
 MOT_DE_PASSE = "2627"
 FOOTER_TEXT  = "www.saladeandcake.com  —  contact@saladeandcake.com"
 
+SUPABASE_URL = "https://kzkavskhplvaigtewmhr.supabase.co"
+SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt6a2F2c2tocGx2YWlndGV3bWhyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczNTY2MDQsImV4cCI6MjA5MjkzMjYwNH0.bdS8CW77a98v-YfAB3Z5sdWwunfi7r9RwwHXsZdY38U"
+SUPABASE_HEADERS = {
+    "apikey": SUPABASE_KEY,
+    "Authorization": f"Bearer {SUPABASE_KEY}",
+    "Content-Type": "application/json"
+}
+
 SOCIETE = {
     "nom":     "Salade And Cake",
     "forme":   "SAS KYD",
@@ -31,14 +40,59 @@ SOCIETE = {
     "rcs":     "RCS Paris"
 }
 
-# TVA par produit hors mignardises
-TVA_HORS = {
-    "Cocktail Avec Alcool": 0.20,
-}
+TVA_HORS         = {"Cocktail Avec Alcool": 0.20}
 TVA_DEFAULT_HORS = 0.10
 TVA_PRODUITS     = 0.10
 TVA_LIBRES       = 0.10
 TVA_SUPP         = 0.20
+
+# =========================
+# SUPABASE HELPERS
+# =========================
+def supabase_insert(numero, client, adresse, date_prestation):
+    try:
+        data = {
+            "numero": numero,
+            "client": client,
+            "adresse": adresse,
+            "date_prestation": date_prestation,
+            "statut": "en_attente"
+        }
+        r = req.post(f"{SUPABASE_URL}/rest/v1/prestations",
+                     json=data, headers=SUPABASE_HEADERS)
+        return r.status_code in [200, 201]
+    except:
+        return False
+
+def supabase_get_all():
+    try:
+        r = req.get(f"{SUPABASE_URL}/rest/v1/prestations?select=*&order=date_prestation.asc",
+                    headers=SUPABASE_HEADERS)
+        return r.json() if r.status_code == 200 else []
+    except:
+        return []
+
+def supabase_update_statut(numero, statut):
+    try:
+        r = req.patch(
+            f"{SUPABASE_URL}/rest/v1/prestations?numero=eq.{numero}",
+            json={"statut": statut},
+            headers={**SUPABASE_HEADERS, "Prefer": "return=representation"}
+        )
+        return r.status_code in [200, 204]
+    except:
+        return False
+
+def supabase_get_one(numero):
+    try:
+        r = req.get(
+            f"{SUPABASE_URL}/rest/v1/prestations?numero=eq.{numero}&select=*",
+            headers=SUPABASE_HEADERS
+        )
+        data = r.json()
+        return data[0] if data else None
+    except:
+        return None
 
 # =========================
 # NUMÉROTATION
@@ -50,10 +104,9 @@ def get_numero_facture():
     return datetime.now().strftime("F-%Y%m%d-%H%M")
 
 # =========================
-# PRODUITS COMPLETS
+# PRODUITS
 # =========================
 PRODUCTS = {
-    # SALÉ
     "Mini Burger": 2.50,
     "Mini Hot Dog": 1.60,
     "Mini Kebab, Pain Pita": 2.50,
@@ -89,7 +142,6 @@ PRODUCTS = {
     "Champignon à l'ail et fines herbes": 0.80,
     "Mini Quiche": 2.00,
     "Canape Blini": 1.00,
-    # CROUSTILLANT
     "Ketlata": 1.60,
     "Nems Poulet": 1.20,
     "Nems Legumes": 1.20,
@@ -102,7 +154,6 @@ PRODUCTS = {
     "Samoussa Poulet Curry": 1.20,
     "Falafel": 1.00,
     "Tenders de Poulet": 2.00,
-    # VERRINES / SALADES
     "Verrine Poulet Tartare de tomate": 1.50,
     "Verrine Legumes Croquant": 1.20,
     "Verrine Legumes Marinés": 1.50,
@@ -114,7 +165,6 @@ PRODUCTS = {
     "Coupelle Tomate ancienne Burrata Pesto": 2.00,
     "Roulé d'Aubergine Parmesan": 1.00,
     "Roulé de Courgette Parmesan": 1.00,
-    # SUCRÉ
     "Tiramisu": 1.20,
     "Mousse Au Chocolat": 1.50,
     "Mini Donuts": 1.00,
@@ -171,7 +221,7 @@ def calc_total(products, hors, supp, libres):
 # =========================
 # PDF DEVIS (inchangé)
 # =========================
-def generate_pdf_buffer(nom, adresse, personnes, products, hors, supp, libres,
+def generate_pdf_buffer(nom, adresse, personnes, date_prestation, products, hors, supp, libres,
                         total, buffer, numero, remise_pct, remise_euros):
     c = canvas.Canvas(buffer, pagesize=A4)
     page_width = A4[0]
@@ -213,15 +263,26 @@ def generate_pdf_buffer(nom, adresse, personnes, products, hors, supp, libres,
     c.setFont("Helvetica", 9)
     c.setFillColorRGB(*GRAY)
     date_str = datetime.now().strftime("%d/%m/%Y")
-    c.drawCentredString(300, 664, f"N° {numero}  —  {date_str}")
+    c.drawCentredString(300, 664, f"N° {numero}  —  Émis le {date_str}")
 
     c.setFillColorRGB(*BLACK)
     c.setFont("Helvetica", 10)
     c.drawString(50, 648, f"Client : {nom}")
     c.drawString(50, 633, f"Adresse : {adresse}")
     c.drawString(50, 618, f"Personnes : {personnes}")
-
-    y = 595
+    if date_prestation:
+        try:
+            dp = datetime.strptime(date_prestation, "%Y-%m-%d").strftime("%d/%m/%Y")
+        except:
+            dp = date_prestation
+        c.setFont("Helvetica-Bold", 10)
+        c.setFillColorRGB(*GOLD)
+        c.drawString(50, 603, f"Date de prestation : {dp}")
+        c.setFillColorRGB(*BLACK)
+        c.setFont("Helvetica", 10)
+        y = 580
+    else:
+        y = 595
 
     c.setFont("Helvetica-Bold", 10)
     c.drawString(COL_NOM,  y, "Produit")
@@ -265,7 +326,6 @@ def generate_pdf_buffer(nom, adresse, personnes, products, hors, supp, libres,
         y -= 12
         c.line(50, y, 550, y)
         y -= 12
-
         c.setFont("Helvetica", 9)
         for k, v in hors.items():
             y = check_y(y)
@@ -287,7 +347,6 @@ def generate_pdf_buffer(nom, adresse, personnes, products, hors, supp, libres,
         y -= 12
         c.line(50, y, 550, y)
         y -= 12
-
         c.setFont("Helvetica", 9)
         for k, v in supp.items():
             y = check_y(y)
@@ -304,31 +363,26 @@ def generate_pdf_buffer(nom, adresse, personnes, products, hors, supp, libres,
     y -= 18
 
     has_remise = (remise_pct > 0) or (remise_euros > 0)
-
     if has_remise:
         c.setFont("Helvetica", 11)
         c.setFillColorRGB(*BLACK)
         c.drawString(COL_NOM, y, "Total")
         c.drawRightString(COL_EURO, y, f"{total:.2f} €")
         y -= 16
-
         if remise_pct > 0:
             montant_remise = total * remise_pct / 100
             libelle_remise = f"Remise ({remise_pct:.1f}%)"
         else:
             montant_remise = remise_euros
             libelle_remise = "Remise"
-
         c.setFillColorRGB(*RED)
         c.drawString(COL_NOM, y, libelle_remise)
         c.drawRightString(COL_EURO, y, f"- {montant_remise:.2f} €")
         y -= 16
-
         total_final = total - montant_remise
         c.setFillColorRGB(*BLACK)
         c.line(350, y - 3, 550, y - 3)
         y -= 16
-
         c.setFont("Helvetica-Bold", 14)
         c.setFillColorRGB(*GOLD)
         c.drawString(COL_NOM, y, "TOTAL")
@@ -348,7 +402,7 @@ def generate_pdf_buffer(nom, adresse, personnes, products, hors, supp, libres,
 # =========================
 # PDF FACTURE
 # =========================
-def generate_facture_buffer(nom, adresse, personnes, info_client,
+def generate_facture_buffer(nom, adresse, personnes, date_prestation, info_client,
                              products, hors, supp, libres,
                              buffer, numero,
                              remise_pct, remise_euros,
@@ -380,25 +434,21 @@ def generate_facture_buffer(nom, adresse, personnes, info_client,
             return nouvelle_page()
         return y
 
-    # ---- LOGO ----
     try:
         c.drawImage(LOGO_PATH, 235, 690, width=130, height=130,
                     preserveAspectRatio=True, mask='auto')
     except:
         pass
 
-    # ---- TITRE ----
     c.setFont("Helvetica-Bold", 20)
     c.setFillColorRGB(*GOLD)
     c.drawCentredString(300, 678, "FACTURE")
 
-    # ---- NUMÉRO + DATE ----
     c.setFont("Helvetica", 9)
     c.setFillColorRGB(*GRAY)
     date_str = datetime.now().strftime("%d/%m/%Y")
     c.drawCentredString(300, 664, f"N° {numero}  —  {date_str}")
 
-    # ---- SOCIÉTÉ (gauche) ----
     c.setFillColorRGB(*BLACK)
     c.setFont("Helvetica-Bold", 9)
     c.drawString(50, 645, SOCIETE["nom"])
@@ -409,20 +459,28 @@ def generate_facture_buffer(nom, adresse, personnes, info_client,
     c.drawString(50, 597, f"SIRET : {SOCIETE['siret']}")
     c.drawString(50, 585, f"N° TVA : {SOCIETE['tva']}  —  {SOCIETE['rcs']}")
 
-    # ---- CLIENT (droite) ----
     c.setFont("Helvetica-Bold", 9)
     c.drawRightString(550, 645, "CLIENT")
     c.setFont("Helvetica", 9)
     c.drawRightString(550, 633, nom)
     c.drawRightString(550, 621, adresse)
     c.drawRightString(550, 609, f"{personnes} personnes")
+    if date_prestation:
+        try:
+            dp = datetime.strptime(date_prestation, "%Y-%m-%d").strftime("%d/%m/%Y")
+        except:
+            dp = date_prestation
+        c.setFont("Helvetica-Bold", 9)
+        c.setFillColorRGB(*GOLD)
+        c.drawRightString(550, 597, f"Prestation : {dp}")
+        c.setFillColorRGB(*BLACK)
+        c.setFont("Helvetica", 9)
     if info_client:
-        for i, ligne in enumerate(info_client.split("\n")[:3]):
-            c.drawRightString(550, 597 - i*12, ligne.strip())
+        for i, ligne in enumerate(info_client.split("\n")[:2]):
+            c.drawRightString(550, 585 - i*12, ligne.strip())
 
-    y = 565
+    y = 560
 
-    # ---- EN-TÊTES ----
     c.setFont("Helvetica-Bold", 10)
     c.drawString(COL_NOM,  y, "Désignation")
     c.drawRightString(COL_QTE,  y, "Qté")
@@ -432,11 +490,9 @@ def generate_facture_buffer(nom, adresse, personnes, info_client,
     c.line(50, y, 550, y)
     y -= 15
 
-    # Accumulateurs TVA
     total_ht_10 = 0
     total_ht_20 = 0
 
-    # ---- PRODUITS ----
     c.setFont("Helvetica", 9)
     for p, (q, pr) in products.items():
         y = check_y(y)
@@ -453,7 +509,6 @@ def generate_facture_buffer(nom, adresse, personnes, info_client,
             c.drawRightString(COL_EURO, y, f"{tot_ht:.2f}")
         y -= 12
 
-    # ---- PRODUITS LIBRES ----
     if libres:
         for (intitule, (q, pu)) in libres:
             y = check_y(y)
@@ -466,7 +521,6 @@ def generate_facture_buffer(nom, adresse, personnes, info_client,
             c.drawRightString(COL_EURO, y, f"{tot_ht:.2f}")
             y -= 12
 
-    # ---- HORS MIGNARDISES ----
     if hors:
         y -= 10
         y = check_y(y, 30)
@@ -478,7 +532,6 @@ def generate_facture_buffer(nom, adresse, personnes, info_client,
         y -= 12
         c.line(50, y, 550, y)
         y -= 12
-
         c.setFont("Helvetica", 9)
         for k, v in hors.items():
             y = check_y(y)
@@ -491,20 +544,13 @@ def generate_facture_buffer(nom, adresse, personnes, info_client,
                 tot_ht = v[0] * pu_ht
                 if tva_rate == 0.20:
                     total_ht_20 += tot_ht
-                    c.setFillColorRGB(0.3, 0.3, 0.3)
-                    c.drawString(COL_NOM + 2, y - 10,
-                                 f"  TVA 20% applicable")
-                    c.setFillColorRGB(*BLACK)
                 else:
                     total_ht_10 += tot_ht
                 c.drawRightString(COL_QTE,  y, str(v[0]))
                 c.drawRightString(COL_PU,   y, f"{pu_ht:.2f}")
                 c.drawRightString(COL_EURO, y, f"{tot_ht:.2f}")
             y -= 12
-            if v[0] != "OFFERT" and TVA_HORS.get(k, 0) == 0.20:
-                y -= 8
 
-    # ---- SUPPLÉMENTS ----
     if supp:
         y -= 10
         y = check_y(y, 30)
@@ -514,7 +560,6 @@ def generate_facture_buffer(nom, adresse, personnes, info_client,
         y -= 12
         c.line(50, y, 550, y)
         y -= 12
-
         c.setFont("Helvetica", 9)
         for k, v in supp.items():
             y = check_y(y)
@@ -527,13 +572,11 @@ def generate_facture_buffer(nom, adresse, personnes, info_client,
                 c.drawRightString(COL_EURO, y, f"{v_ht:.2f}")
             y -= 12
 
-    # ---- RECAP TVA + TOTAUX ----
     total_ht  = total_ht_10 + total_ht_20
     tva_10    = total_ht_10 * 0.10
     tva_20    = total_ht_20 * 0.20
     total_ttc = total_ht + tva_10 + tva_20
 
-    # Remise
     has_remise = (remise_pct > 0) or (remise_euros > 0)
     if has_remise:
         if remise_pct > 0:
@@ -542,11 +585,11 @@ def generate_facture_buffer(nom, adresse, personnes, info_client,
         else:
             montant_remise_ttc = remise_euros
             libelle_remise = "Remise"
-        ratio_remise   = montant_remise_ttc / total_ttc if total_ttc > 0 else 0
-        remise_ht      = total_ht * ratio_remise
-        total_ht_apres = total_ht - remise_ht
-        tva_10_apres   = tva_10 * (1 - ratio_remise)
-        tva_20_apres   = tva_20 * (1 - ratio_remise)
+        ratio_remise    = montant_remise_ttc / total_ttc if total_ttc > 0 else 0
+        remise_ht       = total_ht * ratio_remise
+        total_ht_apres  = total_ht - remise_ht
+        tva_10_apres    = tva_10 * (1 - ratio_remise)
+        tva_20_apres    = tva_20 * (1 - ratio_remise)
         total_ttc_final = total_ttc - montant_remise_ttc
     else:
         total_ht_apres  = total_ht
@@ -580,24 +623,22 @@ def generate_facture_buffer(nom, adresse, personnes, info_client,
         y -= 13
 
     if total_ht_10 > 0:
-        c.drawString(COL_NOM, y, f"TVA 10%")
+        c.drawString(COL_NOM, y, "TVA 10%")
         c.drawRightString(COL_EURO, y, f"{tva_10_apres:.2f} €")
         y -= 13
     if total_ht_20 > 0:
-        c.drawString(COL_NOM, y, f"TVA 20%")
+        c.drawString(COL_NOM, y, "TVA 20%")
         c.drawRightString(COL_EURO, y, f"{tva_20_apres:.2f} €")
         y -= 13
 
     c.line(350, y - 3, 550, y - 3)
     y -= 16
-
     c.setFont("Helvetica-Bold", 14)
     c.setFillColorRGB(*GOLD)
     c.drawString(COL_NOM, y, "TOTAL TTC")
     c.drawRightString(COL_EURO, y, f"{total_ttc_final:.2f} €")
     y -= 22
 
-    # ---- STATUT PAIEMENT ----
     c.setFillColorRGB(*BLACK)
     y = check_y(y, 60)
 
@@ -606,13 +647,11 @@ def generate_facture_buffer(nom, adresse, personnes, info_client,
         c.setFillColorRGB(*GREEN)
         c.drawString(COL_NOM, y, "✓  PAYÉ")
         c.setFillColorRGB(*BLACK)
-
     elif statut == "a_payer":
         c.setFont("Helvetica-Bold", 13)
         c.setFillColorRGB(0.8, 0.2, 0.1)
         c.drawString(COL_NOM, y, "À PAYER")
         c.setFillColorRGB(*BLACK)
-
     elif statut == "acompte":
         if acompte_pct > 0:
             montant_acompte = total_ttc_final * acompte_pct / 100
@@ -622,7 +661,6 @@ def generate_facture_buffer(nom, adresse, personnes, info_client,
             montant_acompte = acompte_euros
             lib = f"Acompte versé : {montant_acompte:.2f} €"
             reste = total_ttc_final - montant_acompte
-
         c.setFont("Helvetica-Bold", 10)
         c.setFillColorRGB(*GOLD)
         c.drawString(COL_NOM, y, lib)
@@ -640,16 +678,23 @@ def generate_facture_buffer(nom, adresse, personnes, info_client,
 app = Flask(__name__)
 app.secret_key = "salade_and_cake_secret_2627"
 
+def login_required(f):
+    from functools import wraps
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not session.get("connecte"):
+            return redirect(url_for("login"))
+        return f(*args, **kwargs)
+    return decorated
+
 @app.route("/login", methods=["GET", "POST"])
 def login():
     erreur = ""
     if request.method == "POST":
-        mdp = request.form.get("mdp", "").strip()
-        if mdp == MOT_DE_PASSE:
+        if request.form.get("mdp", "").strip() == MOT_DE_PASSE:
             session["connecte"] = True
             return redirect(url_for("index"))
-        else:
-            erreur = "Mot de passe incorrect."
+        erreur = "Mot de passe incorrect."
     return render_template("login.html", erreur=erreur)
 
 @app.route("/logout")
@@ -658,28 +703,52 @@ def logout():
     return redirect(url_for("login"))
 
 @app.route("/")
+@login_required
 def index():
-    if not session.get("connecte"):
-        return redirect(url_for("login"))
     return render_template("form.html", products=PRODUCTS, hors=HORS)
 
 @app.route("/facture")
+@login_required
 def facture_index():
-    if not session.get("connecte"):
-        return redirect(url_for("login"))
     return render_template("facture.html", products=PRODUCTS, hors=HORS)
 
-@app.route("/generer", methods=["POST"])
-def generer():
-    if not session.get("connecte"):
-        return redirect(url_for("login"))
+@app.route("/planning")
+@login_required
+def planning():
+    prestations = supabase_get_all()
+    return render_template("planning.html", prestations=prestations)
 
-    nom       = request.form.get("nom")
-    adresse   = request.form.get("adresse")
-    personnes = int(request.form.get("personnes"))
-    remise_pct   = float(request.form.get("remise_pct",   "0") or "0")
-    remise_euros = float(request.form.get("remise_euros", "0") or "0")
-    numero = get_numero_devis()
+@app.route("/statut", methods=["GET", "POST"])
+@login_required
+def statut():
+    message = ""
+    prestation = None
+    if request.method == "POST":
+        numero = request.form.get("numero", "").strip()
+        nouveau_statut = request.form.get("nouveau_statut", "").strip()
+        if numero and nouveau_statut:
+            ok = supabase_update_statut(numero, nouveau_statut)
+            if ok:
+                message = "success"
+                prestation = supabase_get_one(numero)
+            else:
+                message = "error"
+        elif numero:
+            prestation = supabase_get_one(numero)
+            if not prestation:
+                message = "notfound"
+    return render_template("statut.html", message=message, prestation=prestation)
+
+@app.route("/generer", methods=["POST"])
+@login_required
+def generer():
+    nom             = request.form.get("nom")
+    adresse         = request.form.get("adresse")
+    personnes       = int(request.form.get("personnes"))
+    date_prestation = request.form.get("date_prestation", "").strip()
+    remise_pct      = float(request.form.get("remise_pct",   "0") or "0")
+    remise_euros    = float(request.form.get("remise_euros", "0") or "0")
+    numero          = get_numero_devis()
 
     products = {}
     for name, price in PRODUCTS.items():
@@ -696,9 +765,7 @@ def generer():
         if pu_val.lower() == "offert":
             hors[item] = ("OFFERT", 0, 0)
         elif qte_val not in ("0", "") and pu_val not in ("0", ""):
-            qte = int(qte_val)
-            pu  = float(pu_val)
-            hors[item] = (qte, pu, qte * pu)
+            hors[item] = (int(qte_val), float(pu_val), int(qte_val)*float(pu_val))
 
     supp = {}
     for item in ["Livraison", "Installation", "Service"]:
@@ -721,8 +788,13 @@ def generer():
         i += 1
 
     total = calc_total(products, hors, supp, libres)
+
+    # Sauvegarde dans Supabase
+    if date_prestation:
+        supabase_insert(numero, nom, adresse, date_prestation)
+
     buffer = io.BytesIO()
-    generate_pdf_buffer(nom, adresse, personnes, products, hors, supp, libres,
+    generate_pdf_buffer(nom, adresse, personnes, date_prestation, products, hors, supp, libres,
                         total, buffer, numero, remise_pct, remise_euros)
     buffer.seek(0)
 
@@ -731,20 +803,19 @@ def generer():
                      mimetype="application/pdf")
 
 @app.route("/generer_facture", methods=["POST"])
+@login_required
 def generer_facture():
-    if not session.get("connecte"):
-        return redirect(url_for("login"))
-
-    nom         = request.form.get("nom")
-    adresse     = request.form.get("adresse")
-    personnes   = int(request.form.get("personnes"))
-    info_client = request.form.get("info_client", "").strip()
-    remise_pct   = float(request.form.get("remise_pct",   "0") or "0")
-    remise_euros = float(request.form.get("remise_euros", "0") or "0")
-    statut       = request.form.get("statut", "a_payer")
-    acompte_pct  = float(request.form.get("acompte_pct",  "0") or "0")
-    acompte_euros= float(request.form.get("acompte_euros","0") or "0")
-    numero = get_numero_facture()
+    nom             = request.form.get("nom")
+    adresse         = request.form.get("adresse")
+    personnes       = int(request.form.get("personnes"))
+    date_prestation = request.form.get("date_prestation", "").strip()
+    info_client     = request.form.get("info_client", "").strip()
+    remise_pct      = float(request.form.get("remise_pct",   "0") or "0")
+    remise_euros    = float(request.form.get("remise_euros", "0") or "0")
+    statut_val      = request.form.get("statut", "a_payer")
+    acompte_pct     = float(request.form.get("acompte_pct",  "0") or "0")
+    acompte_euros   = float(request.form.get("acompte_euros","0") or "0")
+    numero          = get_numero_facture()
 
     products = {}
     for name, price in PRODUCTS.items():
@@ -761,9 +832,7 @@ def generer_facture():
         if pu_val.lower() == "offert":
             hors[item] = ("OFFERT", 0, 0)
         elif qte_val not in ("0", "") and pu_val not in ("0", ""):
-            qte = int(qte_val)
-            pu  = float(pu_val)
-            hors[item] = (qte, pu, qte * pu)
+            hors[item] = (int(qte_val), float(pu_val), int(qte_val)*float(pu_val))
 
     supp = {}
     for item in ["Livraison", "Installation", "Service"]:
@@ -785,12 +854,16 @@ def generer_facture():
             libres.append((intitule, (int(qte_val), float(pu_val))))
         i += 1
 
+    # Sauvegarde dans Supabase
+    if date_prestation:
+        supabase_insert(numero, nom, adresse, date_prestation)
+
     buffer = io.BytesIO()
-    generate_facture_buffer(nom, adresse, personnes, info_client,
+    generate_facture_buffer(nom, adresse, personnes, date_prestation, info_client,
                             products, hors, supp, libres,
                             buffer, numero,
                             remise_pct, remise_euros,
-                            statut, acompte_pct, acompte_euros)
+                            statut_val, acompte_pct, acompte_euros)
     buffer.seek(0)
 
     return send_file(buffer, as_attachment=True,

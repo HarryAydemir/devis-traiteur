@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Modifier un statut - Salade and Cake</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #1a1a1a; color: #f0f0f0; font-family: 'Georgia', serif; padding: 20px; }
+    h1 { color: #d4af37; text-align: center; margin-bottom: 8px; font-size: 1.8em; letter-spacing: 2px; }
+    .nav { text-align: center; margin-bottom: 24px; display: flex; justify-content: center; gap: 20px; }
+    .nav a { color: #888; font-size: 0.85em; text-decoration: none; }
+    .nav a:hover { color: #d4af37; }
+
+    .section { background: #2a2a2a; border-radius: 10px; padding: 20px; margin-bottom: 20px; max-width: 500px; margin-left: auto; margin-right: auto; }
+    h2 { color: #d4af37; margin-bottom: 14px; font-size: 1em; border-bottom: 1px solid #444; padding-bottom: 6px; }
+
+    label { display: block; margin-bottom: 4px; font-size: 0.85em; color: #ccc; }
+    input[type="text"] {
+      width: 100%; padding: 12px; border-radius: 6px;
+      border: 1px solid #444; background: #1a1a1a;
+      color: #f0f0f0; font-size: 0.95em; margin-bottom: 14px;
+    }
+    button[type="submit"] {
+      width: 100%; padding: 12px; background: #d4af37;
+      color: #1a1a1a; font-size: 1em; font-weight: bold;
+      border: none; border-radius: 8px; cursor: pointer;
+    }
+    button[type="submit"]:hover { background: #c49b2a; }
+
+    /* Fiche prestation */
+    .fiche { background: #1f1f1f; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+    .fiche p { font-size: 0.88em; color: #bbb; margin-bottom: 6px; }
+    .fiche strong { color: #f0f0f0; }
+    .statut-badge {
+      display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 0.8em; font-weight: bold; margin-top: 4px;
+    }
+    .badge-en_attente { background: #c0392b33; color: #e74c3c; }
+    .badge-valide     { background: #d4af3733; color: #d4af37; }
+    .badge-paye       { background: #2ecc7133; color: #2ecc71; }
+    .badge-refuse     { background: #55555533; color: #888; }
+
+    /* Boutons statut */
+    .statut-buttons { display: flex; flex-direction: column; gap: 10px; }
+    .statut-btn {
+      width: 100%; padding: 14px; border: 2px solid; border-radius: 8px;
+      font-size: 0.95em; font-family: 'Georgia', serif; cursor: pointer;
+      transition: all 0.2s; background: transparent;
+    }
+    .btn-valide  { border-color: #d4af37; color: #d4af37; }
+    .btn-valide:hover  { background: #d4af3722; }
+    .btn-paye    { border-color: #2ecc71; color: #2ecc71; }
+    .btn-paye:hover    { background: #2ecc7122; }
+    .btn-refuse  { border-color: #555; color: #888; }
+    .btn-refuse:hover  { background: #55555522; }
+    .btn-attente { border-color: #e74c3c; color: #e74c3c; }
+    .btn-attente:hover { background: #e74c3c22; }
+
+    .msg-success { background: #1a6b1a33; border: 1px solid #2ecc71; color: #2ecc71; padding: 12px; border-radius: 8px; text-align: center; margin-bottom: 16px; }
+    .msg-error   { background: #c0392b33; border: 1px solid #e74c3c; color: #e74c3c; padding: 12px; border-radius: 8px; text-align: center; margin-bottom: 16px; }
+    .msg-notfound{ background: #44444433; border: 1px solid #555; color: #888; padding: 12px; border-radius: 8px; text-align: center; margin-bottom: 16px; }
+  </style>
+</head>
+<body>
+
+<h1>✏️ Modifier un statut</h1>
+<div class="nav">
+  <a href="/">← Devis</a>
+  <a href="/planning">📅 Planning</a>
+</div>
+
+{% if message == 'success' %}
+<div class="msg-success">✓ Statut mis à jour avec succès !</div>
+{% elif message == 'error' %}
+<div class="msg-error">Erreur lors de la mise à jour.</div>
+{% elif message == 'notfound' %}
+<div class="msg-notfound">Numéro de devis introuvable.</div>
+{% endif %}
+
+<!-- Recherche par numéro -->
+<div class="section">
+  <h2>Rechercher un devis / facture</h2>
+  <form method="POST">
+    <label>Numéro de devis ou facture</label>
+    <input type="text" name="numero"
+           value="{{ request.args.get('numero', '') or (prestation.numero if prestation else '') }}"
+           placeholder="Ex: D-20260423-1423">
+    <input type="hidden" name="nouveau_statut" value="">
+    <button type="submit">Rechercher</button>
+  </form>
+</div>
+
+{% if prestation %}
+<!-- Fiche + boutons de changement de statut -->
+<div class="section">
+  <h2>Prestation trouvée</h2>
+  <div class="fiche">
+    <p><strong>{{ prestation.client }}</strong></p>
+    <p>N° {{ prestation.numero }}</p>
+    <p>{{ prestation.adresse }}</p>
+    <p>Date : {{ prestation.date_prestation }}</p>
+    <div>
+      <span class="statut-badge badge-{{ prestation.statut }}">
+        {% if prestation.statut == 'en_attente' %}⏳ En attente
+        {% elif prestation.statut == 'valide' %}🟠 Validé
+        {% elif prestation.statut == 'paye' %}✅ Payé
+        {% elif prestation.statut == 'refuse' %}❌ Refusé
+        {% endif %}
+      </span>
+    </div>
+  </div>
+
+  <div class="statut-buttons">
+    {% if prestation.statut != 'en_attente' %}
+    <form method="POST">
+      <input type="hidden" name="numero" value="{{ prestation.numero }}">
+      <input type="hidden" name="nouveau_statut" value="en_attente">
+      <button type="submit" class="statut-btn btn-attente">⏳ Remettre en attente</button>
+    </form>
+    {% endif %}
+
+    {% if prestation.statut != 'valide' %}
+    <form method="POST">
+      <input type="hidden" name="numero" value="{{ prestation.numero }}">
+      <input type="hidden" name="nouveau_statut" value="valide">
+      <button type="submit" class="statut-btn btn-valide">🟠 Marquer comme Validé</button>
+    </form>
+    {% endif %}
+
+    {% if prestation.statut != 'paye' %}
+    <form method="POST">
+      <input type="hidden" name="numero" value="{{ prestation.numero }}">
+      <input type="hidden" name="nouveau_statut" value="paye">
+      <button type="submit" class="statut-btn btn-paye">✅ Marquer comme Payé</button>
+    </form>
+    {% endif %}
+
+    {% if prestation.statut != 'refuse' %}
+    <form method="POST">
+      <input type="hidden" name="numero" value="{{ prestation.numero }}">
+      <input type="hidden" name="nouveau_statut" value="refuse">
+      <button type="submit" class="statut-btn btn-refuse">❌ Marquer comme Refusé</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+</body>
+</html>
